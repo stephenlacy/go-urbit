@@ -95,7 +95,6 @@ func tail(arg *big.Int) *big.Int {
 }
 
 func fenLoop(j int, ell *big.Int, arr *big.Int, b *big.Int) *big.Int {
-
 	a := u_65535
 	if j < 1 {
 		tem1 := B(0).Mul(a, arr)
@@ -114,6 +113,7 @@ func fenLoop(j int, ell *big.Int, arr *big.Int, b *big.Int) *big.Int {
 
 	return fenLoop(j-1, tmp, ell, b)
 }
+
 func fen(r int, a *big.Int, b *big.Int, m *big.Int) *big.Int {
 	ahh := B(0).Mod(m, a)
 
@@ -144,7 +144,7 @@ func prf(j int, arg *big.Int) *big.Int {
 
 func patp2syls(name string) []string {
 	re := regexp.MustCompile(`[~-]`)
-	return chunks(re.ReplaceAllString(name, ""), 3)
+	return Chunks(re.ReplaceAllString(name, ""), 3)
 }
 
 func findIndex(list [256]string, name string) int {
@@ -167,23 +167,23 @@ func isValidPat(name string) bool {
 }
 
 // https://github.com/igrmk/golang-chunks-benchmarks/blob/master/chunks.go
-func chunks(s string, chunkSize int) []string {
+func Chunks(s string, chunkSize int) []string {
 	if chunkSize >= len(s) {
 		return []string{s}
 	}
-	var chunks []string
+	var Chunks []string
 	chunk := make([]rune, chunkSize)
 	len := 0
 	for _, r := range s {
 		chunk[len] = r
 		len++
 		if len == chunkSize {
-			chunks = append(chunks, string(chunk))
+			Chunks = append(Chunks, string(chunk))
 			len = 0
 		}
 	}
 	if len > 0 {
-		chunks = append(chunks, string(chunk[:len]))
+		Chunks = append(Chunks, string(chunk[:len]))
 	}
-	return chunks
+	return Chunks
 }

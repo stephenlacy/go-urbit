@@ -4,18 +4,24 @@ import (
 	"testing"
 )
 
-var gName = "~zod"
-var gName2 = "~fed"
-var sName = "~fipfes"
 var pName = "~litryl-tadmev"
-var cName = "~libmer-bolnut-somteb-rapheb--fadneb-milsec-lissub-taddef"
-var mName = "~dabhec-bitrux-lidluc-lidtyv"
-var bName = "101110111100011011100110011"
-
-var pHash = "e0500"
-var cHash = "279f2d435959e414ce82d450094437b5"
-var mHash = "b51bb67b72d20061"
+var pEKey = "5a14c99c533ef2138de811430657957c1cdaabbac4d8c21e8785e62f994c99e7"
+var pAKey = "8a6b789427cd0a03efc7f66ed4cc3841223f41c85f7488a75acd7517061b3ba0"
 
 func TestLookup(t *testing.T) {
+	res, _ := Lookup(pName)
+	if res.EncryptionKey != pEKey {
+		t.Errorf("expected %s got %s", pEKey, res.EncryptionKey)
+	}
+	if res.EncryptionSecret != pAKey {
+		t.Errorf("expected %s got %s", pAKey, res.EncryptionSecret)
+	}
+}
 
+func TestPadLeft(t *testing.T) {
+	c1 := "00000000test"
+	res := padLeft("test", 12, "0")
+	if res != c1 {
+		t.Errorf("expected %s got %s", c1, res)
+	}
 }

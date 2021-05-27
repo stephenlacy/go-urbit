@@ -6,10 +6,6 @@ import (
 	"github.com/twmb/murmur3"
 )
 
-var u_256 = big.NewInt(256)
-var ux_FF = big.NewInt(0xFF)
-var ux_FF00 = big.NewInt(0xFF00)
-
 func Muk(seed uint32, arg *big.Int) *big.Int {
 	b := arg.Bytes()
 	a := []byte{0, 0}
