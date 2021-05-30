@@ -42,12 +42,73 @@ func Patp2hex(name string) (string, error) {
 	return bn.Text(16), nil
 }
 
+func bex(n *big.Int) *big.Int {
+	return B(0).Exp(B(2), n, nil)
+}
+
+func rsh(a, b, c *big.Int) *big.Int {
+	be := bex(a)
+	return B(0).Div(c, bex(B(0).Mul(be, b)))
+}
+
+func end(a, b, c *big.Int) *big.Int {
+	be := bex(a)
+	return B(0).Mod(c, bex(be.Mul(be, b)))
+}
+
+func met(a, b, c *big.Int) *big.Int {
+	if b.Cmp(B(0)) == 0 {
+		return c
+	}
+	return met(a, rsh(a, B(1), b), B(0).Add(c, B(1)))
+}
+
+func Hex2patp(hex string) (string, error) {
+	bn := B(0)
+	bn, _ = bn.SetString(hex, 16)
+	sxz := Fynd(bn, feis)
+	dyy := met(B(4), sxz, B(0))
+
+	var loop func(tsxz, timp *big.Int, trep string) string
+	loop = func(tsxz, timp *big.Int, trep string) string {
+		log := end(B(4), B(1), tsxz)
+		pre := prefixes[rsh(B(3), B(1), log).Int64()]
+		suf := suffixes[end(B(3), B(1), log).Int64()]
+
+		etc := "-"
+		if B(0).Mod(timp, B(4)).Cmp(B(0)) == 0 {
+			if timp.Cmp(B(0)) == 0 {
+				etc = ""
+			} else {
+				etc = "--"
+			}
+		}
+
+		res := pre + suf + etc + trep
+		if timp.Cmp(dyy) == 0 {
+			return trep
+		}
+		ti := B(0).Add(timp, B(1))
+		return loop(rsh(B(4), B(1), tsxz), ti, res)
+	}
+
+	dyx := met(B(3), sxz, B(0))
+
+	tmp := ""
+	if dyx.Cmp(B(1)) == 0 {
+		tmp = suffixes[sxz.Int64()]
+	} else {
+		tmp = loop(sxz, B(0), "")
+	}
+	return "~" + tmp, nil
+}
+
 func Patp2bn(name string) (*big.Int, error) {
 	if !isValidPat(name) {
 		return nil, fmt.Errorf("invalid name %s", name)
 	}
 	addr := makeAddr(name)
-	bn := Fynd(addr)
+	bn := Fynd(addr, tail)
 	return bn, nil
 }
 
@@ -55,16 +116,16 @@ func B(i int64) *big.Int {
 	return big.NewInt(i)
 }
 
-func Fynd(bn *big.Int) *big.Int {
+func Fynd(bn *big.Int, fn func(*big.Int) *big.Int) *big.Int {
 	lo := B(0).And(bn, ux_ffff_ffff)
 	hi := B(0).And(bn, ux_ffff_ffff_0000_0000)
 
 	if bn.Cmp(u_65536) > 0 && bn.Cmp(ux_ffff_ffff) < 0 {
 		s := B(0).Sub(bn, u_65536)
-		return B(0).Add(u_65536, tail(s))
+		return B(0).Add(u_65536, fn(s))
 	}
 	if bn.Cmp(ux_1_0000_0000) > 0 && bn.Cmp(ux_ffff_ffff_ffff_ffff) < 0 {
-		return B(0).Or(hi, Fynd(lo))
+		return B(0).Or(hi, Fynd(lo, fn))
 	}
 	return bn
 }
@@ -92,6 +153,14 @@ func tail(arg *big.Int) *big.Int {
 	}
 
 	return fen(4, u_65535, u_65536, c)
+}
+
+func feis(arg *big.Int) *big.Int {
+	c := fe(4, u_65535, u_65536, arg)
+	if c.Cmp(ux_ffff_ffff) < 0 {
+		return c
+	}
+	return fe(4, u_65535, u_65536, c)
 }
 
 func fenLoop(j int, ell *big.Int, arr *big.Int, b *big.Int) *big.Int {
@@ -130,6 +199,34 @@ func fen(r int, a *big.Int, b *big.Int, m *big.Int) *big.Int {
 	}
 
 	return fenLoop(r, L, R, b)
+}
+
+func feLoop(r int, j int, ell *big.Int, arr *big.Int, b *big.Int) *big.Int {
+	a := u_65535
+	if j > r {
+		if arr.Cmp(a) == 0 {
+			tem1 := B(0).Mul(a, arr)
+			return B(0).Add(tem1, ell)
+		}
+		tem1 := B(0).Mul(a, ell)
+		return B(0).Add(tem1, arr)
+	}
+	eff := prf(j-1, arr)
+
+	tmp := B(0)
+	if j%2 != 0 {
+		tmp = tmp.Add(ell, eff).Mod(tmp, a)
+	} else {
+		tmp = tmp.Add(ell, eff).Mod(tmp, b)
+	}
+
+	return feLoop(r, j+1, arr, tmp, b)
+}
+
+func fe(r int, a *big.Int, b *big.Int, m *big.Int) *big.Int {
+	L := B(0).Mod(m, a)
+	R := B(0).Div(m, a)
+	return feLoop(r, 1, L, R, b)
 }
 
 func prf(j int, arg *big.Int) *big.Int {

@@ -50,6 +50,20 @@ func TestPatp2hex(t *testing.T) {
 
 }
 
+func TestHex2patp(t *testing.T) {
+	r1, err := Hex2patp(pHash)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+	if r1 != pName {
+		t.Errorf("'%s' does not match %s", r1, pName)
+	}
+	r2, _ := Hex2patp(cHash)
+	if r2 != cName {
+		t.Errorf("'%s' does not match %s", r2, cName)
+	}
+}
+
 func TestMakeAddr(t *testing.T) {
 	res := makeAddr(pName)
 	if res.Text(2) != bName {
@@ -60,11 +74,10 @@ func TestMakeAddr(t *testing.T) {
 func TestFynd(t *testing.T) {
 	a1 := big.NewInt(918784)
 	intr, _ := strconv.ParseInt(bName, 2, 64)
-	res := Fynd(big.NewInt(intr))
+	res := Fynd(big.NewInt(intr), tail)
 	if res.Cmp(a1) != 0 {
 		t.Errorf("%s does not match %s", res, a1)
 	}
-
 }
 
 func TestMuk(t *testing.T) {
