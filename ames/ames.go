@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/stevelacy/go-ames/ob"
+	"github.com/stevelacy/go-ames/noun"
 )
 
 var ethAddr = "0x223c067f8cf28ae173ee5cafea60ca44c335fecb"
@@ -23,7 +23,7 @@ type ETHResponse struct {
 }
 
 func Lookup(name string) (LookupResponse, error) {
-	hex, err := ob.Patp2hex(name)
+	hex, err := noun.Patp2hex(name)
 	if err != nil {
 		return LookupResponse{}, err
 	}
@@ -33,7 +33,7 @@ func Lookup(name string) (LookupResponse, error) {
 		return LookupResponse{}, err
 	}
 	// remove 0x prefix then split by 64 chars
-	parts := ob.Chunks(res[2:], 64)
+	parts := noun.Chunks(res[2:], 64)
 	resp := LookupResponse{
 		EncryptionKey:    parts[0],
 		EncryptionSecret: parts[1],

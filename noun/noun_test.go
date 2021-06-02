@@ -1,4 +1,4 @@
-package jam
+package noun
 
 import (
 	"math/big"

@@ -1,4 +1,4 @@
-package ob
+package noun
 
 import (
 	"fmt"
@@ -110,10 +110,6 @@ func Patp2bn(name string) (*big.Int, error) {
 	addr := makeAddr(name)
 	bn := Fynd(addr, tail)
 	return bn, nil
-}
-
-func B(i int64) *big.Int {
-	return big.NewInt(i)
 }
 
 func Fynd(bn *big.Int, fn func(*big.Int) *big.Int) *big.Int {
@@ -236,7 +232,7 @@ func prf(j int, arg *big.Int) *big.Int {
 		2: 0x85bcae01,
 		3: 0x4b387af7,
 	}
-	return Muk(raku[j], arg)
+	return B(int64(Muk(raku[j], 2, arg)))
 }
 
 func patp2syls(name string) []string {

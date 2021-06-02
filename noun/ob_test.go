@@ -1,4 +1,4 @@
-package ob
+package noun
 
 import (
 	"math/big"
@@ -75,14 +75,6 @@ func TestFynd(t *testing.T) {
 	a1 := big.NewInt(918784)
 	intr, _ := strconv.ParseInt(bName, 2, 64)
 	res := Fynd(big.NewInt(intr), tail)
-	if res.Cmp(a1) != 0 {
-		t.Errorf("%s does not match %s", res, a1)
-	}
-}
-
-func TestMuk(t *testing.T) {
-	a1 := big.NewInt(3744000282)
-	res := Muk(0xb76d5eed, big.NewInt(1501))
 	if res.Cmp(a1) != 0 {
 		t.Errorf("%s does not match %s", res, a1)
 	}
