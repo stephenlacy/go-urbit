@@ -41,3 +41,50 @@ func TestMat(t *testing.T) {
 		t.Errorf("expected %s got %s", c5, r5)
 	}
 }
+
+func TestMakeNoun(t *testing.T) {
+	r1 := MakeNoun(100)
+	c1 := "100"
+	if r1.String() != c1 {
+		t.Errorf("expected %s got %s", c1, r1)
+	}
+	r2 := MakeNoun([]interface{}{100, []interface{}{12, 16}, B(255), 24})
+	c2 := "[100 [12 16] 255 24]"
+	if r2.String() != c2 {
+		t.Errorf("expected %s got %s", c2, r2)
+	}
+}
+
+func TestJam(t *testing.T) {
+	n1 := MakeNoun([]interface{}{12, 16})
+	r1 := Jam(n1)
+	if r1.Int64() != 17176641 {
+		t.Errorf("expected %s got %s", n1, r1)
+	}
+
+	a := []interface{}{12, 16, 19, 23}
+	b := []interface{}{12, 16, 19, 23}
+	n2 := MakeNoun([]interface{}{a, b})
+	r2 := Jam(n2)
+	if r2.Int64() != 5322556398681252101 {
+		t.Errorf("expected %s got %s", n2, r2)
+	}
+}
+
+func TestCue(t *testing.T) {
+	n1 := B(17176641)
+	r1 := Cue(n1)
+	c1 := MakeNoun([]interface{}{12, 16})
+
+	if r1.String() != c1.String() {
+		t.Errorf("expected %s got %s", c1, n1)
+	}
+
+	a := []interface{}{12, 16, 19, 23}
+	b := []interface{}{12, 16, 19, 23}
+	n2 := MakeNoun([]interface{}{a, b})
+	r2 := Cue(B(5322556398681252101))
+	if r2.String() != n2.String() {
+		t.Errorf("expected %s got %s", n2, r2)
+	}
+}
