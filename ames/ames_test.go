@@ -13,8 +13,8 @@ func TestLookup(t *testing.T) {
 	if res.EncryptionKey != pEKey {
 		t.Errorf("expected %s got %s", pEKey, res.EncryptionKey)
 	}
-	if res.EncryptionSecret != pAKey {
-		t.Errorf("expected %s got %s", pAKey, res.EncryptionSecret)
+	if res.AuthenticationKey != pAKey {
+		t.Errorf("expected %s got %s", pAKey, res.AuthenticationKey)
 	}
 }
 

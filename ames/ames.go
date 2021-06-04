@@ -13,9 +13,9 @@ var apiAddr = "http://eth-mainnet.urbit.org:8545"
 var ethMethod = "0x63fa9a87" // "points"
 
 type LookupResponse struct {
-	EncryptionKey    string
-	EncryptionSecret string
-	Sponsor          string
+	EncryptionKey     string
+	AuthenticationKey string
+	Sponsor           string
 }
 
 type ETHResponse struct {
@@ -35,9 +35,9 @@ func Lookup(name string) (LookupResponse, error) {
 	// remove 0x prefix then split by 64 chars
 	parts := noun.Chunks(res[2:], 64)
 	resp := LookupResponse{
-		EncryptionKey:    parts[0],
-		EncryptionSecret: parts[1],
-		Sponsor:          parts[5],
+		EncryptionKey:     parts[0],
+		AuthenticationKey: parts[1],
+		Sponsor:           parts[5],
 	}
 
 	return resp, err
