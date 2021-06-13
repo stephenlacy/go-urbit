@@ -67,8 +67,7 @@ func UrcryptAESSivcEn(message *big.Int, AESSivData [][]byte, key [64]byte) (erro
 	var iv2 [16]byte
 	copy(iv2[:], iv1)
 
-	b2 := big.NewInt(0)
-	b2.SetBytes(out1)
+	b2 := noun.LittleToBig(out1)
 	return nil, iv2, b2
 }
 

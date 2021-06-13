@@ -69,3 +69,15 @@ func BigToLittle(arg *big.Int) []byte {
 	}
 	return b
 }
+
+// LittleToBig converts []bytes from BigEndian to LittleEndian
+func LittleToBig(b []byte) *big.Int {
+	// BigEndian to LittleEndian
+	for i := 0; i < len(b)/2; i++ {
+		j := len(b) - i - 1
+		b[i], b[j] = b[j], b[i]
+	}
+	b2 := big.NewInt(0)
+	b2.SetBytes(b)
+	return b2
+}

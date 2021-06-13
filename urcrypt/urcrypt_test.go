@@ -31,7 +31,7 @@ func TestUrcryptAESSivcEn(t *testing.T) {
 	}
 
 	data2 := [][]byte{{2}, {1}}
-	c3 := big.NewInt(42471)
+	c3 := big.NewInt(59301)
 	c4 := [16]byte{43, 66, 159, 14, 114, 106, 238, 44, 82, 27, 175, 196, 130, 12, 13, 67}
 
 	_, iv2, r2 := UrcryptAESSivcEn(big.NewInt(256), data2, [64]byte{48})

@@ -2,10 +2,13 @@ package ames
 
 import (
 	"bytes"
+	"crypto/sha512"
 	"encoding/json"
+	"math/big"
 	"net/http"
 
 	"github.com/stevelacy/go-ames/noun"
+	"github.com/stevelacy/go-ames/urcrypt"
 )
 
 var ethAddr = "0x223c067f8cf28ae173ee5cafea60ca44c335fecb"
@@ -41,6 +44,56 @@ func Lookup(name string) (LookupResponse, error) {
 	}
 
 	return resp, err
+}
+
+func ConstructPoke(path []string, mark string, data noun.Noun) noun.Noun {
+	return noun.MakeNoun([]interface{}{path, 0, "m", mark, data})
+}
+
+func SplitMessage(num int, blob noun.Noun) []noun.Noun {
+	a := noun.Jam(blob)
+	l := a.BitLen()
+	if l == 0 {
+		return []noun.Noun{noun.MakeNoun([]interface{}{num, 1, 0, blob})}
+	}
+	l = ((l - 1) >> 13) + 1
+	acc := []noun.Noun{}
+	for i := 0; i < l; i++ {
+		n := noun.MakeNoun([]interface{}{num, l, i, noun.Cut(int64(i<<13), 1<<13, a)})
+		acc = append(acc, n)
+	}
+	return acc
+}
+
+func FragmentToShutPacket(frag noun.Noun, bone int) noun.Noun {
+	return noun.MakeNoun([]interface{}{bone, noun.Head(frag), 0, noun.Tail(frag)})
+}
+
+func EncodeShutPacket(pkt noun.Noun, symKey []byte, from *big.Int, to *big.Int, fromLife, toLife int64) (error, noun.Noun) {
+	aVec := [][]byte{
+		noun.BigToLittle(from),
+		noun.BigToLittle(to),
+		noun.BigToLittle(noun.B(fromLife)),
+		noun.BigToLittle(noun.B(toLife)),
+	}
+	jPkt := noun.Jam(pkt)
+	kHash := sha512.Sum512(symKey)
+	err, ivs, cypherText := urcrypt.UrcryptAESSivcEn(jPkt, aVec, kHash)
+	if err != nil {
+		return err, noun.MakeNoun(0)
+	}
+
+	rLen := noun.B(int64((cypherText.BitLen()-1)/8 + 1))
+	iv2 := make([]byte, 16)
+	copy(iv2, ivs[:])
+
+	siv := noun.LittleToBig(iv2)
+	rLen2 := noun.B(0).Lsh(rLen, 128)
+	cypherText2 := noun.B(0).Lsh(cypherText, 144)
+	content := noun.B(0).Xor(siv, noun.B(0).Xor(rLen2, cypherText2))
+
+	res := noun.MakeNoun([]interface{}{[]interface{}{from, to}, fromLife % 16, toLife % 16, 0, content})
+	return nil, res
 }
 
 func makeEthRequest(nameHex string) (string, error) {

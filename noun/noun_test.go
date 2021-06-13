@@ -69,6 +69,13 @@ func TestJam(t *testing.T) {
 	if r2.Int64() != 5322556398681252101 {
 		t.Errorf("expected %s got %s", n2, r2)
 	}
+
+	n3 := MakeNoun([]interface{}{[]string{"ge", "hood"}, 0, "m", "helm-hi", MakeNoun("ping")})
+	c1 := "83103842581186151537609419784725107274636599623840339663322629"
+	r3 := Jam(n3)
+	if r3.Text(10) != c1 {
+		t.Errorf("expected %s got %s", c1, r3)
+	}
 }
 
 func TestCue(t *testing.T) {
@@ -86,5 +93,14 @@ func TestCue(t *testing.T) {
 	r2 := Cue(B(5322556398681252101))
 	if r2.String() != n2.String() {
 		t.Errorf("expected %s got %s", n2, r2)
+	}
+}
+
+func TestStringToCord(t *testing.T) {
+	n1 := "ping"
+	c1 := "676e6970"
+	r1 := StringToCord(n1)
+	if r1.Value.Text(16) != c1 {
+		t.Errorf("expected %s got %s", c1, r1)
 	}
 }

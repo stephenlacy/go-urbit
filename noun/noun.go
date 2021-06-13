@@ -3,6 +3,7 @@ package noun
 import (
 	"fmt"
 	"math/big"
+	"math/bits"
 )
 
 type MatTupl [2]*big.Int
@@ -22,6 +23,28 @@ type Atom struct {
 type Cell struct {
 	Head Noun
 	Tail Noun
+}
+
+func Head(n Noun) Noun {
+	switch t := n.(type) {
+	case Cell:
+		{
+			return t.Head
+		}
+	default:
+		return MakeNoun(0)
+	}
+}
+
+func Tail(n Noun) Noun {
+	switch t := n.(type) {
+	case Cell:
+		{
+			return t.Tail
+		}
+	default:
+		return MakeNoun(0)
+	}
 }
 
 func B(i int64) *big.Int {
@@ -45,7 +68,7 @@ func (a Cell) innerString() string {
 	}
 }
 
-func cut(start, run int64, b *big.Int) *big.Int {
+func Cut(start, run int64, b *big.Int) *big.Int {
 	b1 := B(0).Rsh(b, uint(start))
 	c1 := B(0).Mod(b1, B(0).Lsh(B(1), uint(run)))
 	return c1
@@ -81,9 +104,9 @@ func Rub(index int64, b *big.Int) (int64, Atom) {
 	}
 
 	d := index + c + 1
-	d1 := cut(d, c-1, b)
+	d1 := Cut(d, c-1, b)
 	e := B(0).Add(d1, B(0).Lsh(B(1), uint(c-1)))
-	return c + c + e.Int64(), Atom{Value: cut(d+c-1, e.Int64(), b)}
+	return c + c + e.Int64(), Atom{Value: Cut(d+c-1, e.Int64(), b)}
 }
 
 func bConcat(a, b *big.Int) *big.Int {
@@ -99,9 +122,25 @@ func MakeNoun(arg interface{}) Noun {
 		{
 			return Atom{Value: B(int64(t))}
 		}
+	case int64:
+		{
+			return Atom{Value: B(t)}
+		}
 	case *big.Int:
 		{
 			return Atom{Value: t}
+		}
+	case Noun:
+		return t
+	case []string:
+		// assume it is a `path`
+		l := len(t)
+		if l == 0 {
+			return Atom{Value: B(0)}
+		}
+		return Cell{
+			Head: MakeNoun(t[0]),
+			Tail: MakeNoun(t[1:]),
 		}
 	case []interface{}:
 		{
@@ -125,6 +164,10 @@ func MakeNoun(arg interface{}) Noun {
 			}
 			return c
 		}
+	case string:
+		{
+			return StringToCord(t)
+		}
 	default:
 		return Atom{Value: B(0)}
 	}
@@ -135,7 +178,7 @@ func jamIn(nmap nounMap, n Noun, index int64) (int64, *big.Int) {
 		switch t := n.(type) {
 		case Atom:
 			{
-				if t.Value.BitLen() > int(pIndex) {
+				if t.Value.BitLen() < bits.Len64(uint64(pIndex)) {
 					d := Mat(t.Value)
 					return 1 + d[0].Int64(), B(0).Lsh(d[1], 1)
 				}
@@ -217,4 +260,12 @@ func Cue(b *big.Int) Noun {
 
 	_, q1 := cueIn(nmap, b, index)
 	return q1
+}
+
+// StringToCord returns Atom of type cord
+func StringToCord(str string) Atom {
+	a := LittleToBig([]byte(str))
+	return Atom{
+		Value: a,
+	}
 }
