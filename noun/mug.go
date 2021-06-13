@@ -46,14 +46,8 @@ func Mug(n Noun) uint32 {
 }
 
 func Muk(seed uint32, length int, arg *big.Int) uint32 {
-	b := arg.Bytes()
 	var b2 []byte
-
-	// BigEndian to LittleEndian
-	for i := 0; i < len(b)/2; i++ {
-		j := len(b) - i - 1
-		b[i], b[j] = b[j], b[i]
-	}
+	b := BigToLittle(arg)
 
 	if len(b) < length {
 		b2 = make([]byte, length)
@@ -63,4 +57,15 @@ func Muk(seed uint32, length int, arg *big.Int) uint32 {
 	}
 
 	return murmur3.SeedSum32(seed, b2)
+}
+
+// BigToLittle converts from BigEndian to LittleEndian
+func BigToLittle(arg *big.Int) []byte {
+	b := arg.Bytes()
+	// BigEndian to LittleEndian
+	for i := 0; i < len(b)/2; i++ {
+		j := len(b) - i - 1
+		b[i], b[j] = b[j], b[i]
+	}
+	return b
 }
