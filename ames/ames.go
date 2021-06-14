@@ -5,6 +5,7 @@ import (
 	"crypto/sha512"
 	"encoding/json"
 	"math/big"
+	"net"
 	"net/http"
 
 	"github.com/stevelacy/go-ames/noun"
@@ -12,6 +13,7 @@ import (
 	"github.com/stevelacy/go-ames/urcrypt"
 )
 
+var zodAddr = "zod.urbit.org:13337"
 var ethAddr = "0x223c067f8cf28ae173ee5cafea60ca44c335fecb"
 var apiAddr = "http://eth-mainnet.urbit.org:8545"
 var ethMethod = "0x63fa9a87" // "points"
@@ -177,7 +179,22 @@ func MakeRequest(path []string, mark string, data Noun, num int, bone int, symKe
 		return []byte{}, err
 	}
 	packet := EncodePacket(pack)
+
+	err = sendPacket(packet)
+	if err != nil {
+		return []byte{}, err
+	}
 	return packet, nil
+}
+
+func sendPacket(packet []byte) error {
+	conn, err := net.Dial("udp", zodAddr)
+	if err != nil {
+		return err
+	}
+	conn.Write(packet)
+	defer conn.Close()
+	return nil
 }
 
 func makeEthRequest(nameHex string) (string, error) {
