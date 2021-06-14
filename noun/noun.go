@@ -11,6 +11,14 @@ type MatTupl [2]*big.Int
 type nounMap map[string]int64
 type cueNounMap map[int64]Noun
 
+type InvalidAtomError struct {
+	Message string
+}
+
+func (e *InvalidAtomError) Error() string {
+	return e.Message
+}
+
 type Noun interface {
 	isNoun()
 	String() string
@@ -65,6 +73,21 @@ func (a Cell) innerString() string {
 		return a.Head.String() + " " + t.innerString()
 	default:
 		return a.Head.String() + " " + a.Tail.String()
+	}
+}
+
+func AssertAtom(n Noun) (Atom, error) {
+	switch t := n.(type) {
+	case Atom:
+		{
+			return t, nil
+		}
+	default:
+		{
+			return Atom{}, &InvalidAtomError{
+				Message: fmt.Sprintf("Expected Atom. Received: %v", t),
+			}
+		}
 	}
 }
 
@@ -268,4 +291,9 @@ func StringToCord(str string) Atom {
 	return Atom{
 		Value: a,
 	}
+}
+
+// ByteLen returns the length of the big int in bytes
+func ByteLen(b *big.Int) int64 {
+	return int64(b.BitLen()-1)/8 + 1
 }

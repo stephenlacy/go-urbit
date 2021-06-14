@@ -19,7 +19,7 @@ func cat(a, b uint32) *big.Int {
 
 func mum(a, b uint32, key *big.Int) uint32 {
 	for i := 0; i < 8; i++ {
-		m1 := Muk(a, key.BitLen()/8+1, key)
+		m1 := Muk(a, ByteLen(key), key)
 		m2 := m1 % (1 << 31)
 		m3 := m1 / (1 << 31)
 
@@ -45,11 +45,11 @@ func Mug(n Noun) uint32 {
 	return 1
 }
 
-func Muk(seed uint32, length int, arg *big.Int) uint32 {
+func Muk(seed uint32, length int64, arg *big.Int) uint32 {
 	var b2 []byte
 	b := BigToLittle(arg)
 
-	if len(b) < length {
+	if int64(len(b)) < length {
 		b2 = make([]byte, length)
 		copy(b2, b)
 	} else {
