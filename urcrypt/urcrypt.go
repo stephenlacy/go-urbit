@@ -2,7 +2,7 @@ package urcrypt
 
 // #cgo LDFLAGS: -l urcrypt -l aes_siv
 // #include <stdlib.h>
-// #include "./output/include/urcrypt.h"
+// #include "./urcrypt/urcrypt.h"
 import (
 	"C"
 )

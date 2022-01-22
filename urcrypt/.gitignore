@@ -50,23 +50,20 @@ s/*
 *.in
 *.pc
 *.m4
+*.pc
+*.log
+config.h
 config.status
-configure
+config.h.in
 libtool
-compile
-ar-lib
-config.guess
-config.guess~
-config.sub
-config.sub~
-depcomp
-install-sh
-ltmain.sh
-missing
+
+# the following was adapted from
+# https://github.com/github/gitignore/blob/991e760c1c6d50fdda246e0178b9c58b06770b90/Autotools.gitignore
+
 # http://www.gnu.org/software/automake
 
 Makefile.in
-/ar-lib
+build-aux/ar-lib
 /mdate-sh
 /py-compile
 /test-driver
@@ -80,35 +77,31 @@ autom4te.cache
 /autoscan.log
 /autoscan-*.log
 /aclocal.m4
-/compile
-/config.cache
-/config.guess
-/config.h.in
-/config.log
-/config.status
-/config.sub
-/configure
-/configure.scan
-/depcomp
-/install-sh
-/missing
+build-aux/compile
+config.cache
+build-aux/config.guess
+config.h.in
+build-aux/config.log
+build-aux/config.status
+build-aux/config.sub
+configure
+configure.scan
+build-aux/depcomp
+build-aux/install-sh
+build-aux/missing
 /stamp-h1
 
 # https://www.gnu.org/software/libtool/
 
-/ltmain.sh
-
-# http://www.gnu.org/software/texinfo
-
-/texinfo.tex
+build-aux/ltmain.sh
 
 # http://www.gnu.org/software/m4/
 
-m4/libtool.m4
-m4/ltoptions.m4
-m4/ltsugar.m4
-m4/ltversion.m4
-m4/lt~obsolete.m4
+build-aux/m4/libtool.m4
+build-aux/m4/ltoptions.m4
+build-aux/m4/ltsugar.m4
+build-aux/m4/ltversion.m4
+build-aux/m4/lt~obsolete.m4
 
 # Generated Makefile
 # (meta build system like autotools,

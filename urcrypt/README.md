@@ -2,21 +2,6 @@ What is urcrypt?
 ----------------
 urcrypt is a library of cryptography routines used by urbit jets.
 
-
-Installing
-__________
-
-```
-brew tap cuber/homebrew-libsecp256k1
-
-brew install autoconf automake libtool libsecp256k1
-```
-
-```
-./configure --disable-shared
-make
-```
-
 Why is urcrypt?
 ---------------
 Urbit's C runtime (long the only urbit runtime) has accumulated a collection of
