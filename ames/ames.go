@@ -127,6 +127,7 @@ func EncodePacket(encoded Noun) []byte {
 
 	checksum := Mug(MakeNoun(body)) & 0xfffff
 
+	// xor leftshift magic
 	header :=
 		(0 << 0) ^
 			(0 << 3) ^

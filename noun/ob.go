@@ -126,6 +126,7 @@ func Fynd(bn *big.Int, fn func(*big.Int) *big.Int) *big.Int {
 	return bn
 }
 
+// makeAddr converts a patp to address
 func makeAddr(name string) *big.Int {
 	syls := patp2syls(name)
 
@@ -264,19 +265,19 @@ func Chunks(s string, chunkSize int) []string {
 	if chunkSize >= len(s) {
 		return []string{s}
 	}
-	var Chunks []string
+	var chunks []string
 	chunk := make([]rune, chunkSize)
 	len := 0
 	for _, r := range s {
 		chunk[len] = r
 		len++
 		if len == chunkSize {
-			Chunks = append(Chunks, string(chunk))
+			chunks = append(chunks, string(chunk))
 			len = 0
 		}
 	}
 	if len > 0 {
-		Chunks = append(Chunks, string(chunk[:len]))
+		chunks = append(chunks, string(chunk[:len]))
 	}
-	return Chunks
+	return chunks
 }

@@ -76,6 +76,7 @@ func (a Cell) innerString() string {
 	}
 }
 
+// AssertAtom returns error if not a valid Atom
 func AssertAtom(n Noun) (Atom, error) {
 	switch t := n.(type) {
 	case Atom:
