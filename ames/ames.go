@@ -198,6 +198,28 @@ func sendPacket(packet []byte) error {
 	return nil
 }
 
+func MakeConnRequest(c *Connection, path []string, mark string, data Noun, num int, bone int, symKey []byte, from, to *big.Int, fromLife, toLife int64) ([]byte, error) {
+	poke := ConstructPoke(path, mark, data)
+	msg := SplitMessage(num, poke)
+	pat := FragmentToShutPacket(msg[0], bone)
+	pack, err := EncodeShutPacket(pat, symKey, from, to, fromLife, toLife)
+	if err != nil {
+		return []byte{}, err
+	}
+	packet := EncodePacket(pack)
+
+	err = sendConnPacket(c, packet)
+	if err != nil {
+		return []byte{}, err
+	}
+	return packet, nil
+}
+
+func sendConnPacket(c *Connection, packet []byte) error {
+	_, err := c.lConn.WriteToUDP(packet, c.rAddr)
+	return err
+}
+
 func makeEthRequest(nameHex string) (string, error) {
 	padName := padLeft(nameHex, 64, "0")
 	str := `{"jsonrpc":"2.0","id":"0","method":"eth_call","params":[{"to": "` + ethAddr + `", "data": "` + ethMethod + padName + `"}, "latest"]}`
