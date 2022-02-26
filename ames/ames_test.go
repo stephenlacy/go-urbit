@@ -94,7 +94,7 @@ func TestMakeRequest(t *testing.T) {
 	fromLife := int64(1)
 	toLife := int64(1)
 
-	res, _ := MakeRequest(
+	res, _ := CreatePacket(
 		[]string{"ge", "hood"},
 		"helm-hi",
 		noun.MakeNoun("urbit-go"),

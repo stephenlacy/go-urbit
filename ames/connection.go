@@ -11,14 +11,14 @@ import (
 )
 
 type Connection struct {
-	pubKey       *big.Int
-	privKey      [32]byte
-	mut          sync.Mutex
-	from, to     *big.Int
-	bone, num    int
-	rConn, lConn *net.UDPConn
-	rAddr        *net.UDPAddr
-	symKey       []byte
+	pubKey    *big.Int
+	privKey   [32]byte
+	mut       sync.Mutex
+	from, to  *big.Int
+	bone, num int
+	conn      *net.UDPConn
+	rAddr     *net.UDPAddr
+	symKey    []byte
 }
 
 // Connect initiates a connection with ames
@@ -33,8 +33,18 @@ func (c *Connection) Connect(from string, to string, seed string) ([]byte, error
 	bSeed := noun.B(0)
 	bSeed.SetString(seed, 10)
 	c.privKey = SeedToEncKey(bSeed)
+	c.from, err = noun.Patp2bn(from)
+	if err != nil {
+		return nil, err
+	}
 
 	zodPatp, err := noun.Patp2bn("~zod")
+	if err != nil {
+		return nil, err
+	}
+
+	// query zod on eth
+	ethZodRes, err := Lookup("~zod")
 	if err != nil {
 		return nil, err
 	}
@@ -46,22 +56,16 @@ func (c *Connection) Connect(from string, to string, seed string) ([]byte, error
 	}
 
 	// create local listener with random port
-	lConn, err := net.ListenUDP("udp", nil)
+	conn, err := net.ListenUDP("udp", nil)
 	if err != nil {
 		return nil, err
 	}
-	c.lConn = lConn
+	c.conn = conn
 
-	// read all incoming packets
+	// handle all incoming packets
 	go c.handleConn()
 
 	// ping zod
-
-	// query zod on eth
-	ethZodRes, err := Lookup("~zod")
-	if err != nil {
-		return nil, err
-	}
 
 	zodPubkey := noun.B(0)
 	zodPubkey.SetString(ethZodRes.EncryptionKey, 16)
@@ -69,8 +73,7 @@ func (c *Connection) Connect(from string, to string, seed string) ([]byte, error
 	copy(pubZodKeyArr[:], noun.BigToLittle(zodPubkey))
 	zodSymKey := urcrypt.UrcryptEdShar(pubZodKeyArr, c.privKey)
 
-	_, err = MakeConnRequest(
-		c,
+	pkt, err := CreatePacket(
 		[]string{"ge", "hood"},
 		"helm-hi",
 		noun.MakeNoun("urbit-go"),
@@ -87,6 +90,12 @@ func (c *Connection) Connect(from string, to string, seed string) ([]byte, error
 		return nil, err
 	}
 
+	_, err = c.SendPacket(pkt)
+
+	if err != nil {
+		return nil, err
+	}
+
 	// ping target
 
 	c.pubKey = noun.B(0)
@@ -97,7 +106,6 @@ func (c *Connection) Connect(from string, to string, seed string) ([]byte, error
 
 	c.symKey = urcrypt.UrcryptEdShar(pubKeyArr, c.privKey)
 
-	c.from, err = noun.Patp2bn(from)
 	if err != nil {
 		return nil, err
 	}
@@ -114,8 +122,7 @@ func (c *Connection) Connect(from string, to string, seed string) ([]byte, error
 	c.bone = 1
 	c.num = 1
 
-	res, err := MakeConnRequest(
-		c,
+	pkt, err = CreatePacket(
 		[]string{"ge", "hood"},
 		"helm-hi",
 		noun.MakeNoun("urbit-go"),
@@ -127,8 +134,12 @@ func (c *Connection) Connect(from string, to string, seed string) ([]byte, error
 		fromLife,
 		toLife,
 	)
+	if err != nil {
+		return nil, err
+	}
+	_, err = c.SendPacket(pkt)
 
-	return res, err
+	return pkt, err
 }
 
 // Request sends a mark and noun to a connected ship
@@ -143,19 +154,23 @@ func (c *Connection) Request(path []string, mark string, data noun.Noun) ([]byte
 
 	c.num++
 
-	return MakeConnRequest(c, path, mark, data, c.bone, c.num, c.symKey, c.from, c.to, fromLife, toLife)
-
+	pkt, err := CreatePacket(path, mark, data, c.bone, c.num, c.symKey, c.from, c.to, fromLife, toLife)
+	if err != nil {
+		return nil, err
+	}
+	_, err = c.SendPacket(pkt)
+	return pkt, err
 }
 
 func (c *Connection) handleConn() {
 	buffer := make([]byte, 1024)
-	n, addr, err := c.lConn.ReadFromUDP(buffer)
+	n, addr, err := c.conn.ReadFromUDP(buffer)
 	fmt.Println(n, addr, err, buffer)
 
 	/* buf := make([]byte, 0, 4096)
 	tmp := make([]byte, 512)
 	for {
-		a, err := bufio.NewReader(c.lConn).Read(tmp)
+		a, err := bufio.NewReader(c.conn).Read(tmp)
 		fmt.Println("for read", a, err)
 		if err != nil {
 			fmt.Println("close:", err)
@@ -167,4 +182,8 @@ func (c *Connection) handleConn() {
 		buf = append(buf, tmp[:a]...)
 	}
 	fmt.Println(buf) */
+}
+
+func (c *Connection) SendPacket(pkt []byte) (int, error) {
+	return c.conn.WriteToUDP(pkt, c.rAddr)
 }

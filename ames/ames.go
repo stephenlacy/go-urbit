@@ -5,7 +5,6 @@ import (
 	"crypto/sha512"
 	"encoding/json"
 	"math/big"
-	"net"
 	"net/http"
 
 	"github.com/stevelacy/go-ames/noun"
@@ -171,7 +170,7 @@ func SeedToEncKey(seed *big.Int) [32]byte {
 	return b3
 }
 
-func MakeRequest(path []string, mark string, data Noun, num int, bone int, symKey []byte, from, to *big.Int, fromLife, toLife int64) ([]byte, error) {
+func CreatePacket(path []string, mark string, data Noun, num int, bone int, symKey []byte, from, to *big.Int, fromLife, toLife int64) ([]byte, error) {
 	poke := ConstructPoke(path, mark, data)
 	msg := SplitMessage(num, poke)
 	pat := FragmentToShutPacket(msg[0], bone)
@@ -181,43 +180,7 @@ func MakeRequest(path []string, mark string, data Noun, num int, bone int, symKe
 	}
 	packet := EncodePacket(pack)
 
-	err = sendPacket(packet)
-	if err != nil {
-		return []byte{}, err
-	}
 	return packet, nil
-}
-
-func sendPacket(packet []byte) error {
-	conn, err := net.Dial("udp", zodAddr)
-	if err != nil {
-		return err
-	}
-	conn.Write(packet)
-	defer conn.Close()
-	return nil
-}
-
-func MakeConnRequest(c *Connection, path []string, mark string, data Noun, num int, bone int, symKey []byte, from, to *big.Int, fromLife, toLife int64) ([]byte, error) {
-	poke := ConstructPoke(path, mark, data)
-	msg := SplitMessage(num, poke)
-	pat := FragmentToShutPacket(msg[0], bone)
-	pack, err := EncodeShutPacket(pat, symKey, from, to, fromLife, toLife)
-	if err != nil {
-		return []byte{}, err
-	}
-	packet := EncodePacket(pack)
-
-	err = sendConnPacket(c, packet)
-	if err != nil {
-		return []byte{}, err
-	}
-	return packet, nil
-}
-
-func sendConnPacket(c *Connection, packet []byte) error {
-	_, err := c.lConn.WriteToUDP(packet, c.rAddr)
-	return err
 }
 
 func makeEthRequest(nameHex string) (string, error) {
