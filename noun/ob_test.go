@@ -16,6 +16,12 @@ var cName = "~libmer-bolnut-somteb-rapheb--fadneb-milsec-lissub-taddef"
 var mName = "~dabhec-bitrux-lidluc-lidtyv"
 var bName = "101110111100011011100110011"
 
+var a1 = "~zod"
+var a2 = "~litryl"
+var a3 = "~litryl-tadmev"
+var a4 = "~mister-wicdev-wisryt"
+var a5 = "~dabhec-bitrux-lidluc-lidtyv"
+
 var pHash = "e0500"
 var cHash = "279f2d435959e414ce82d450094437b5"
 var mHash = "b51bb67b72d20061"
@@ -109,11 +115,11 @@ func TestIsValidPat(t *testing.T) {
 }
 
 func TestClan(t *testing.T) {
-	g, _ := Clan("~zod")
-	s, _ := Clan("~litryl")
-	p, _ := Clan("~litryl-tadmev")
-	m, _ := Clan("~mister-wicdev-wisryt")
-	c, _ := Clan("~dabhec-bitrux-lidluc-lidtyv")
+	g, _ := Clan(gName)
+	s, _ := Clan(sName)
+	p, _ := Clan(pName)
+	m, _ := Clan(mName)
+	c, _ := Clan(cName)
 
 	out := [5]string{g, s, p, m, c}
 	expected := [5]string{"galaxy", "star", "planet", "moon", "comet"}
@@ -123,16 +129,40 @@ func TestClan(t *testing.T) {
 }
 
 func TestSein(t *testing.T) {
-	g, _ := Sein("~zod")
-	s, _ := Sein("~litryl")
-	p, _ := Sein("~litryl-tadmev")
-	m, _ := Sein("~mister-wicdev-wisryt")
-	c, _ := Sein("~dabhec-bitrux-lidluc-lidtyv")
+
+	g, _ := Sein(gName)
+	s, _ := Sein(sName)
+	p, _ := Sein(pName)
+	m, _ := Sein(mName)
+	c, _ := Sein(cName)
 
 	out := [5]*big.Int{g, s, p, m, c}
-	expected := [5]*big.Int{B(0), B(222), B(1280), B(65792), B(0)}
+	expected := [5]*big.Int{B(0), B(255), B(1280), B(1926365281), B(0)}
 	if !reflect.DeepEqual(expected, out) {
 		t.Errorf("expected: %v, got: %v", expected, out)
+	}
+}
+
+func TestBN2patp(t *testing.T) {
+	// turn the patp to big.Int
+	g, _ := Patp2bn(gName)
+	s, _ := Patp2bn(sName)
+	p, _ := Patp2bn(pName)
+	m, _ := Patp2bn(mName)
+	c, _ := Patp2bn(cName)
+
+	// take the big.Int and convert to string
+	g1, _ := BN2patp(g)
+	s1, _ := BN2patp(s)
+	p1, _ := BN2patp(p)
+	m1, _ := BN2patp(m)
+	c1, _ := BN2patp(c)
+
+	out2 := [5]string{g1, s1, p1, m1, c1}
+	expected2 := [5]string{gName, sName, pName, mName, cName}
+
+	if out2 != expected2 {
+		t.Errorf("expected: %v, got: %v", expected2, out2)
 	}
 }
 
@@ -146,4 +176,27 @@ func ExampleHex2patp() {
 	hexp, _ := Hex2patp("ffff")
 	fmt.Println(hexp)
 	// Output: ~fipfes
+}
+
+func ExamplePatp2bn() {
+	bn, _ := Patp2bn(pName)
+
+	patp, _ := BN2patp(bn)
+	fmt.Println(patp)
+	// Output: ~litryl-tadmev
+}
+
+func ExampleClan() {
+	// Get the class of the patp
+	clan, _ := Clan(sName)
+	fmt.Println(clan)
+	// Output: star
+}
+
+func ExampleSein() {
+	// Get the parent of the patp
+	clanB, _ := Sein(sName)
+	clan, _ := BN2patp(clanB)
+	fmt.Println(clan)
+	// Output: ~fes
 }

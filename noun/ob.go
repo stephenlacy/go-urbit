@@ -81,7 +81,7 @@ func Clan(name string) (string, error) {
 	if wid.Cmp(B(4)) < 0 {
 		return "planet", nil
 	}
-	if wid.Cmp(B(8)) < 0 {
+	if wid.Cmp(B(8)) < 0 || wid.Cmp(B(8)) == 0 {
 		return "moon", nil
 	}
 	return "comet", nil
@@ -112,6 +112,11 @@ func Sein(name string) (*big.Int, error) {
 			return B(0), nil
 		}
 	}
+}
+
+// BN2patp turns a patp big.Int into the string form
+func BN2patp(name *big.Int) (string, error) {
+	return Hex2patp(name.Text(16))
 }
 
 // Hex2patp converts the hex (ec) to a patp (~fed)
@@ -147,7 +152,9 @@ func Hex2patp(hex string) (string, error) {
 	dyx := met(B(3), sxz, B(0))
 
 	tmp := ""
-	if dyx.Cmp(B(1)) == 0 {
+	if dyx.Cmp(B(0)) == 0 {
+		tmp = suffixes[0]
+	} else if dyx.Cmp(B(1)) == 0 {
 		tmp = suffixes[sxz.Int64()]
 	} else {
 		tmp = loop(sxz, B(0), "")
