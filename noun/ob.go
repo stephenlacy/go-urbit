@@ -20,6 +20,7 @@ var prefixes = [256]string{"doz", "mar", "bin", "wan", "sam", "lit", "sig", "hid
 var suffixes = [256]string{"zod", "nec", "bud", "wes", "sev", "per", "sut", "let", "ful", "pen", "syt", "dur", "wep", "ser", "wyl", "sun", "ryp", "syx", "dyr", "nup", "heb", "peg", "lup", "dep", "dys", "put", "lug", "hec", "ryt", "tyv", "syd", "nex", "lun", "mep", "lut", "sep", "pes", "del", "sul", "ped", "tem", "led", "tul", "met", "wen", "byn", "hex", "feb", "pyl", "dul", "het", "mev", "rut", "tyl", "wyd", "tep", "bes", "dex", "sef", "wyc", "bur", "der", "nep", "pur", "rys", "reb", "den", "nut", "sub", "pet", "rul", "syn", "reg", "tyd", "sup", "sem", "wyn", "rec", "meg", "net", "sec", "mul", "nym", "tev", "web", "sum", "mut", "nyx", "rex", "teb", "fus", "hep", "ben", "mus", "wyx", "sym", "sel", "ruc", "dec", "wex", "syr", "wet", "dyl", "myn", "mes", "det", "bet", "bel", "tux", "tug", "myr", "pel", "syp", "ter", "meb", "set", "dut", "deg", "tex", "sur", "fel", "tud", "nux", "rux", "ren", "wyt", "nub", "med", "lyt", "dus", "neb", "rum", "tyn", "seg", "lyx", "pun", "res", "red", "fun", "rev", "ref", "mec", "ted", "rus", "bex", "leb", "dux", "ryn", "num", "pyx", "ryg", "ryx", "fep", "tyr", "tus", "tyc", "leg", "nem", "fer", "mer", "ten", "lus", "nus", "syl", "tec", "mex", "pub", "rym", "tuc", "fyl", "lep", "deb", "ber", "mug", "hut", "tun", "byl", "sud", "pem", "dev", "lur", "def", "bus", "bep", "run", "mel", "pex", "dyt", "byt", "typ", "lev", "myl", "wed", "duc", "fur", "fex", "nul", "luc", "len", "ner", "lex", "rup", "ned", "lec", "ryd", "lyd", "fen", "wel", "nyd", "hus", "rel", "rud", "nes", "hes", "fet", "des", "ret", "dun", "ler", "nyr", "seb", "hul", "ryl", "lud", "rem", "lys", "fyn", "wer", "ryc", "sug", "nys", "nyl", "lyn", "dyn", "dem", "lux", "fed", "sed", "bec", "mun", "lyr", "tes", "mud", "nyt", "byr", "sen", "weg", "fyr", "mur", "tel", "rep", "teg", "pec", "nel", "nev", "fes"}
 
 func init() {
+	// initialize magic numbers to big ints
 	u_65535 = B(65535)
 	u_65536 = B(65536)
 	ux_100 = B(0x100)
@@ -34,6 +35,7 @@ func init() {
 	fmt.Sscan("0xffffffff00000000", ux_ffff_ffff_0000_0000)
 }
 
+// Patp2hex converts a patp (~zod) to the hex value (0)
 func Patp2hex(name string) (string, error) {
 	bn, err := Patp2bn(name)
 	if err != nil {
@@ -63,6 +65,56 @@ func met(a, b, c *big.Int) *big.Int {
 	return met(a, rsh(a, B(1), b), B(0).Add(c, B(1)))
 }
 
+// Clan returns the ship class of a patp
+func Clan(name string) (string, error) {
+	p, err := Patp2bn(name)
+	if err != nil {
+		return "", err
+	}
+	wid := met(B(3), p, B(0))
+	if wid.Cmp(B(1)) < 0 {
+		return "galaxy", nil
+	}
+	if wid.Cmp(B(2)) == 0 {
+		return "star", nil
+	}
+	if wid.Cmp(B(4)) < 0 {
+		return "planet", nil
+	}
+	if wid.Cmp(B(8)) < 0 {
+		return "moon", nil
+	}
+	return "comet", nil
+}
+
+// Sein returns the parent patp as a big.Int
+func Sein(name string) (*big.Int, error) {
+	p, err := Patp2bn(name)
+	if err != nil {
+		return B(0), err
+	}
+	clan, err := Clan(name)
+	if err != nil {
+		return B(0), err
+	}
+	switch clan {
+	case "galaxy":
+		return p, nil
+	case "star":
+		return end(B(3), B(1), p), nil
+	case "planet":
+		return end(B(4), B(1), p), nil
+	case "moon":
+		return end(B(5), B(1), p), nil
+
+	default:
+		{
+			return B(0), nil
+		}
+	}
+}
+
+// Hex2patp converts the hex (ec) to a patp (~fed)
 func Hex2patp(hex string) (string, error) {
 	bn := B(0)
 	bn, _ = bn.SetString(hex, 16)
@@ -103,6 +155,7 @@ func Hex2patp(hex string) (string, error) {
 	return "~" + tmp, nil
 }
 
+// Patp2bn converts a patp to a big int
 func Patp2bn(name string) (*big.Int, error) {
 	if !isValidPat(name) {
 		return nil, fmt.Errorf("invalid name %s", name)

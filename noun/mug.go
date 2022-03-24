@@ -6,10 +6,10 @@ import (
 	"github.com/twmb/murmur3"
 )
 
-var magicSeed1 uint32 = 0xcafebabe
-var magicSeed2 uint32 = 0x7fff
-var magicSeed3 uint32 = 0xdeadbeef
-var magicSeed4 uint32 = 0xfffe
+var magicSeed1 uint32 = 0xcafebabe // https://github.com/urbit/urbit/blob/1e70a1be2a03a1ba60b7d06ce50f12305be62eb0/pkg/urbit/noun/retrieve.c#L1603
+var magicSeed2 uint32 = 0x7fff     // https://github.com/urbit/urbit/blob/1e70a1be2a03a1ba60b7d06ce50f12305be62eb0/pkg/urbit/noun/retrieve.c#L1621
+var magicSeed3 uint32 = 0xdeadbeef // https://github.com/urbit/urbit/blob/1e70a1be2a03a1ba60b7d06ce50f12305be62eb0/pkg/urbit/noun/retrieve.c#L1566
+var magicSeed4 uint32 = 0xfffe     // https://github.com/urbit/urbit/blob/1e70a1be2a03a1ba60b7d06ce50f12305be62eb0/pkg/urbit/noun/retrieve.c#L1594
 
 func cat(a, b uint32) *big.Int {
 	d1 := uint64(b) << 32

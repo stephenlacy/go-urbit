@@ -20,7 +20,7 @@ func (e *InvalidAtomError) Error() string {
 }
 
 type Noun interface {
-	isNoun()
+	isNoun() bool
 	String() string
 }
 
@@ -59,11 +59,15 @@ func B(i int64) *big.Int {
 	return big.NewInt(i)
 }
 
-func (Atom) isNoun() {}
+func (a Atom) isNoun() bool {
+	return true
+}
 func (a Atom) String() string {
 	return a.Value.Text(10)
 }
-func (Cell) isNoun() {}
+func (a Cell) isNoun() bool {
+	return true
+}
 func (a Cell) String() string {
 	return "[" + a.innerString() + "]"
 }
@@ -86,7 +90,7 @@ func AssertAtom(n Noun) (Atom, error) {
 	default:
 		{
 			return Atom{}, &InvalidAtomError{
-				Message: fmt.Sprintf("Expected Atom. Received: %v", t),
+				Message: fmt.Sprintf("Expected Atom. Received: %s", t),
 			}
 		}
 	}
@@ -140,6 +144,7 @@ func bConcat(a, b *big.Int) *big.Int {
 	return a2
 }
 
+// MakeNoun takes an input and turns it into a Noun
 func MakeNoun(arg interface{}) Noun {
 	switch t := arg.(type) {
 	case int:
@@ -239,6 +244,7 @@ func jamIn(nmap nounMap, n Noun, index int64) (int64, *big.Int) {
 	return index, B(0)
 }
 
+// Jam jams noun into a new NounMap
 func Jam(n Noun) *big.Int {
 	var nmap nounMap = make(nounMap)
 	var index int64 = 0

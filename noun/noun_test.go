@@ -1,6 +1,7 @@
 package noun
 
 import (
+	"fmt"
 	"math/big"
 	"reflect"
 	"testing"
@@ -103,4 +104,26 @@ func TestStringToCord(t *testing.T) {
 	if r1.Value.Text(16) != c1 {
 		t.Errorf("expected %s got %s", c1, r1)
 	}
+}
+
+func TestAssertAtom(t *testing.T) {
+	_, err := AssertAtom(MakeNoun("12"))
+	if err != nil {
+		t.Errorf("expected %v got %e", nil, err)
+	}
+	_, err = AssertAtom(Atom{})
+	if err != nil {
+		t.Errorf("expected %v got %e", nil, err)
+	}
+	_, err = AssertAtom(Cell{})
+	if err == nil {
+		t.Errorf("expected error got nil")
+	}
+}
+
+func ExampleMakeNoun() {
+	stringNoun := MakeNoun("string value")
+
+	fmt.Println(stringNoun)
+	// Output: 31399942126277005645796504691
 }

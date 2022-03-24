@@ -1,6 +1,7 @@
 package noun
 
 import (
+	"fmt"
 	"math/big"
 	"reflect"
 	"strconv"
@@ -105,4 +106,44 @@ func TestIsValidPat(t *testing.T) {
 	if isValidPat(f2) {
 		t.Errorf("%s should not be valid", f2)
 	}
+}
+
+func TestClan(t *testing.T) {
+	g, _ := Clan("~zod")
+	s, _ := Clan("~litryl")
+	p, _ := Clan("~litryl-tadmev")
+	m, _ := Clan("~mister-wicdev-wisryt")
+	c, _ := Clan("~dabhec-bitrux-lidluc-lidtyv")
+
+	out := [5]string{g, s, p, m, c}
+	expected := [5]string{"galaxy", "star", "planet", "moon", "comet"}
+	if out != expected {
+		t.Errorf("expected: %v, got: %v", expected, out)
+	}
+}
+
+func TestSein(t *testing.T) {
+	g, _ := Sein("~zod")
+	s, _ := Sein("~litryl")
+	p, _ := Sein("~litryl-tadmev")
+	m, _ := Sein("~mister-wicdev-wisryt")
+	c, _ := Sein("~dabhec-bitrux-lidluc-lidtyv")
+
+	out := [5]*big.Int{g, s, p, m, c}
+	expected := [5]*big.Int{B(0), B(222), B(1280), B(65792), B(0)}
+	if !reflect.DeepEqual(expected, out) {
+		t.Errorf("expected: %v, got: %v", expected, out)
+	}
+}
+
+func ExamplePatp2hex() {
+	hexp, _ := Patp2hex("~ben")
+	fmt.Println(hexp)
+	// Output: 5c
+}
+
+func ExampleHex2patp() {
+	hexp, _ := Hex2patp("ffff")
+	fmt.Println(hexp)
+	// Output: ~fipfes
 }
