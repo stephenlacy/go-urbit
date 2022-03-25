@@ -1,13 +1,14 @@
 package ames
 
 import (
+	"errors"
 	"fmt"
 	"math/big"
 	"net"
 	"sync"
 
-	"github.com/stevelacy/go-ames/noun"
-	"github.com/stevelacy/go-ames/urcrypt"
+	"github.com/stevelacy/go-urbit/noun"
+	"github.com/stevelacy/go-urbit/urcrypt"
 )
 
 type Connection struct {
@@ -19,6 +20,15 @@ type Connection struct {
 	conn      *net.UDPConn
 	rAddr     *net.UDPAddr
 	symKey    []byte
+	breach    bool
+}
+
+func NewConnection(from, to, seed string) (*Connection, error) {
+	conn := Connection{
+		breach: true,
+	}
+	_, err := conn.Connect(from, to, seed)
+	return &conn, err
 }
 
 // Connect initiates a connection with ames
@@ -30,8 +40,10 @@ func (c *Connection) Connect(from string, to string, seed string) ([]byte, error
 	}
 	c.rAddr = raddr
 
-	bSeed := noun.B(0)
-	bSeed.SetString(seed, 10)
+	bSeed, ok := hexSeedToBig(seed)
+	if !ok {
+		return nil, errors.New("Invalid seed value or encoding provided")
+	}
 	c.privKey = SeedToEncKey(bSeed)
 	c.from, err = noun.Patp2bn(from)
 	if err != nil {
@@ -106,10 +118,6 @@ func (c *Connection) Connect(from string, to string, seed string) ([]byte, error
 
 	c.symKey = urcrypt.UrcryptEdShar(pubKeyArr, c.privKey)
 
-	if err != nil {
-		return nil, err
-	}
-
 	c.to, err = noun.Patp2bn(to)
 	if err != nil {
 		return nil, err
@@ -154,7 +162,7 @@ func (c *Connection) Request(path []string, mark string, data noun.Noun) ([]byte
 
 	c.num++
 
-	pkt, err := CreatePacket(path, mark, data, c.bone, c.num, c.symKey, c.from, c.to, fromLife, toLife)
+	pkt, err := CreatePacket(path, mark, data, c.num, c.bone, c.symKey, c.from, c.to, fromLife, toLife)
 	if err != nil {
 		return nil, err
 	}

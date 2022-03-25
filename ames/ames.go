@@ -6,10 +6,11 @@ import (
 	"encoding/json"
 	"math/big"
 	"net/http"
+	"strings"
 
-	"github.com/stevelacy/go-ames/noun"
-	. "github.com/stevelacy/go-ames/noun"
-	"github.com/stevelacy/go-ames/urcrypt"
+	"github.com/stevelacy/go-urbit/noun"
+	. "github.com/stevelacy/go-urbit/noun"
+	"github.com/stevelacy/go-urbit/urcrypt"
 )
 
 var zodAddr = "zod.urbit.org:13337"
@@ -168,6 +169,14 @@ func SeedToEncKey(seed *big.Int) [32]byte {
 	var b3 [32]byte
 	copy(b3[:], b2)
 	return b3
+}
+
+func hexSeedToBig(seed string) (*big.Int, bool) {
+	b := B(0)
+	if strings.Contains(seed, ".") {
+		return b.SetString(strings.ReplaceAll(seed, ".", ""), 0)
+	}
+	return b.SetString(seed, 10)
 }
 
 func CreatePacket(path []string, mark string, data Noun, num int, bone int, symKey []byte, from, to *big.Int, fromLife, toLife int64) ([]byte, error) {

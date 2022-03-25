@@ -11,7 +11,7 @@ import (
 	"math/big"
 	"unsafe"
 
-	"github.com/stevelacy/go-ames/noun"
+	"github.com/stevelacy/go-urbit/noun"
 )
 
 func UrcryptEdShar(public, seed [32]byte) []byte {

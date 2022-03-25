@@ -1,5 +1,5 @@
-module github.com/stevelacy/go-ames
+module github.com/stevelacy/go-urbit
 
 go 1.16
 
-require github.com/twmb/murmur3 v1.1.5 // indirect
+require github.com/twmb/murmur3 v1.1.5
