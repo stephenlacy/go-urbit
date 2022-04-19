@@ -54,7 +54,7 @@ func UrcryptAESSivcEn(message *big.Int, AESSivData [][]byte, key [64]byte) (erro
 		C.free(unsafe.Pointer(out))
 		C.free(unsafe.Pointer(key1))
 		C.free(unsafe.Pointer(iv))
-		return fmt.Errorf("urcrypt_aes_sivc_en: Failed to encrypt received error code: %d", cerr), [16]byte{}, big.NewInt(0)
+		return fmt.Errorf("urcrypt_aes_sivc_en: Failed to encrypt received error code: %d\n", cerr), [16]byte{}, big.NewInt(0)
 	}
 
 	out1 := C.GoBytes(out, (C.int)(msgLen))
@@ -68,10 +68,11 @@ func UrcryptAESSivcEn(message *big.Int, AESSivData [][]byte, key [64]byte) (erro
 	copy(iv2[:], iv1)
 
 	b2 := noun.LittleToBig(out1)
+
 	return nil, iv2, b2
 }
 
-func UrcryptAESSivcDe(message *big.Int, AESSivData [][]byte, key [64]byte, iv [16]byte) (error, *big.Int) {
+func UrcryptAESSivcDe(message *big.Int, AESSivData [][]byte, key [64]byte, iv [16]byte) (*big.Int, error) {
 	b := noun.BigToLittle(message)
 	message1 := (*C.uint8_t)(C.CBytes(b[:]))
 	msgLen := len(b)
@@ -97,7 +98,7 @@ func UrcryptAESSivcDe(message *big.Int, AESSivData [][]byte, key [64]byte, iv [1
 		C.free(unsafe.Pointer(out))
 		C.free(unsafe.Pointer(key1))
 		C.free(unsafe.Pointer(iv1))
-		return fmt.Errorf("urcrypt_aes_sivc_de: Failed to encrypt received error code: %d", cerr), big.NewInt(0)
+		return big.NewInt(0), fmt.Errorf("urcrypt_aes_sivc_de: Failed to decrypt received error code: %d\n", cerr)
 	}
 	out1 := C.GoBytes(out, (C.int)(msgLen))
 	C.free(unsafe.Pointer(message1))
@@ -107,5 +108,8 @@ func UrcryptAESSivcDe(message *big.Int, AESSivData [][]byte, key [64]byte, iv [1
 
 	b2 := big.NewInt(0)
 	b2.SetBytes(out1)
-	return nil, b2
+
+	b3 := noun.LittleToBig(out1)
+
+	return b3, nil
 }

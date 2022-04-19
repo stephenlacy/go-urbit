@@ -18,11 +18,11 @@ func TestBuild(t *testing.T) {
 }
 
 func TestUrcryptAESSivcEn(t *testing.T) {
-	data := [][]byte{{2}}
+	siv := [][]byte{{2}}
 	c1 := big.NewInt(159)
 	c2 := [16]byte{137, 220, 113, 64, 125, 70, 107, 227, 161, 165, 106, 235, 180, 199, 98, 161}
 
-	_, iv, r1 := UrcryptAESSivcEn(big.NewInt(2), data, [64]byte{4})
+	_, iv, r1 := UrcryptAESSivcEn(big.NewInt(2), siv, [64]byte{4})
 	if !reflect.DeepEqual(r1, c1) {
 		t.Errorf("expected %d got %d", c1, r1)
 	}
@@ -44,12 +44,12 @@ func TestUrcryptAESSivcEn(t *testing.T) {
 }
 
 func TestUrcryptAESSivcDe(t *testing.T) {
-	data := [][]byte{{2}}
+	siv := [][]byte{{2}}
 	c1 := big.NewInt(2)
 	c2 := [16]byte{137, 220, 113, 64, 125, 70, 107, 227, 161, 165, 106, 235, 180, 199, 98, 161}
 	ba1 := big.NewInt(159)
 
-	_, r1 := UrcryptAESSivcDe(ba1, data, [64]byte{4}, c2)
+	r1, _ := UrcryptAESSivcDe(ba1, siv, [64]byte{4}, c2)
 
 	if !reflect.DeepEqual(c1, r1) {
 		t.Errorf("expected %d got %d", c1, r1)
