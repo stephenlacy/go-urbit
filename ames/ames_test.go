@@ -4,8 +4,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/stevelacy/go-ames/noun"
-	"github.com/stevelacy/go-ames/urcrypt"
+	"github.com/stevelacy/go-urbit/noun"
+	"github.com/stevelacy/go-urbit/urcrypt"
 )
 
 var pName = "~litryl-tadmev"
@@ -69,6 +69,40 @@ func TestEncodePacket(t *testing.T) {
 	r2 := EncodePacket(r1)
 	if !reflect.DeepEqual(c1, r2) {
 		t.Errorf("expected %v got %v", c1, r2)
+	}
+}
+
+func TestDecodePacket(t *testing.T) {
+	n1 := []byte{128, 28, 112, 182, 33, 0, 1, 1, 0, 0, 1, 1, 0, 113, 126, 0, 0, 251, 177, 66, 74, 134, 147, 242, 188, 119, 57, 37, 27, 132, 153, 69, 253, 34, 0, 174, 98, 110, 181, 25, 144, 121, 192, 44, 232, 136, 22, 223, 146, 232, 23, 9, 200, 94, 235, 235, 169, 110, 64, 44, 233, 30, 17, 20, 94, 212, 254, 76, 106}
+	from, to, _, _, _, err := DecodePacket(n1)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if noun.B(0x10100).Cmp(from) != 0 {
+		t.Errorf("expected %v got %v", noun.B(0x10100), from)
+	}
+	if noun.B(0x7e7100010100).Cmp(to) != 0 {
+		t.Errorf("expected %v got %v", noun.B(0x7e7100010100), to)
+	}
+}
+
+func TestDecodeShutPacket(t *testing.T) {
+	n1 := []byte{128, 28, 112, 182, 33, 0, 1, 1, 0, 0, 1, 1, 0, 113, 126, 0, 0, 251, 177, 66, 74, 134, 147, 242, 188, 119, 57, 37, 27, 132, 153, 69, 253, 34, 0, 174, 98, 110, 181, 25, 144, 121, 192, 44, 232, 136, 22, 223, 146, 232, 23, 9, 200, 94, 235, 235, 169, 110, 64, 44, 233, 30, 17, 20, 94, 212, 254, 76, 106}
+	from, to, fromTick, toTick, content, err := DecodePacket(n1)
+
+	fromLife := int64(1)
+	toLife := int64(2)
+
+	symKey := []byte{31}
+
+	pkt, err := DecodeShutPacket(content, symKey, from, to, fromTick, toTick, fromLife, toLife)
+	if err != nil {
+		t.Error(err)
+	}
+	e1 := "[1 5 0 1 0 5446293427400615627168770935011744630350584192948000500175511867329]"
+	if pkt.String() != e1 {
+		t.Errorf("expected %v got %v", e1, pkt.String())
 	}
 }
 

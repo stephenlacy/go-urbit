@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"crypto/sha512"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"math/big"
 	"net/http"
 	"strings"
@@ -129,9 +131,9 @@ func EncodePacket(encoded Noun) []byte {
 
 	// xor leftshift magic
 	header :=
-		(0 << 0) ^
-			(0 << 3) ^
-			(0 << 4) ^
+		(0 << 0) ^ // padding
+			(0 << 3) ^ // is-ames
+			(0 << 4) ^ // version of zero
 			(senderRank << 7) ^
 			(receiverRank << 9) ^
 			(checksum << 11) ^
@@ -141,6 +143,7 @@ func EncodePacket(encoded Noun) []byte {
 	return BigToLittle(b2)
 }
 
+// EncodeShipMetadata returns size, rank of given name
 func EncodeShipMetadata(name Noun) (uint32, uint32) {
 	a, err := AssertAtom(name)
 	if err != nil {
@@ -158,6 +161,20 @@ func EncodeShipMetadata(name Noun) (uint32, uint32) {
 		return 8, 2
 	}
 	return 16, 3
+}
+
+// DecodeShipMetadata returns the bit length of rank
+func DecodeShipMetadata(rank byte) int64 {
+	if rank == 0 {
+		return 16
+	}
+	if rank == 1 {
+		return 32
+	}
+	if rank == 2 {
+		return 64
+	}
+	return 128
 }
 
 func SeedToEncKey(seed *big.Int) [32]byte {
@@ -190,6 +207,73 @@ func CreatePacket(path []string, mark string, data Noun, num int, bone int, symK
 	packet := EncodePacket(pack)
 
 	return packet, nil
+}
+
+func DecodeShutPacket(content *big.Int, symKey []byte, from, to, fromTick, toTick *big.Int, fromLife, toLife int64) (noun.Noun, error) {
+	siv := noun.Cut(0, 128, content)
+	l := noun.Cut(128, 16, content)
+	len1 := l.Int64()
+	cypherText := noun.Cut(144, len1*8, content)
+
+	aVec := [][]byte{
+		noun.BigToLittle(from),
+		noun.BigToLittle(to),
+		noun.BigToLittle(noun.B(fromLife)),
+		noun.BigToLittle(noun.B(toLife)),
+	}
+
+	iv1 := noun.BigToLittle(siv)
+
+	var ivs [16]byte
+	copy(ivs[:], iv1)
+
+	kHash := sha512.Sum512(symKey)
+
+	fmt.Println(aVec, cypherText)
+	decoded, err := urcrypt.UrcryptAESSivcDe(cypherText, aVec, kHash, ivs)
+	fmt.Println(decoded)
+
+	return noun.Cue(decoded), err
+}
+
+func DecodePacket(pkt []byte) (*big.Int, *big.Int, *big.Int, *big.Int, *big.Int, error) {
+	header := pkt[:4]
+	body := pkt[4:]
+
+	var checksum uint32
+
+	isAmes := (header[0] >> 3 & 0b1)
+	version := header[0] >> 4 & 0b111
+	if isAmes != 0 || version != 0 {
+		return B(0), B(0), B(0), B(0), B(0), errors.New("error: version invalid")
+	}
+	senderRank := (header[0] >> 7 & 0b1) ^ ((header[1] >> 0 & 0b1) << 1)
+	receiverRank := header[1] >> 1 & 0b11
+	checksum = (uint32(header[1]) >> 3 & 0b1111) ^ (uint32(header[2]) << 5) ^ ((uint32(header[3]) >> 0 & 0b1111111) << 13)
+	isRelay := (header[3] >> 7 & 0b1) == 0
+
+	lBody := LittleToBig(body)
+	if isRelay {
+		lBody.Rsh(lBody, uint(6))
+	}
+	nBody := noun.MakeNoun(lBody)
+
+	if Mug(nBody)&0xfffff != checksum {
+		return B(0), B(0), B(0), B(0), B(0), errors.New("error: checksum does not match")
+	}
+
+	senderSize := DecodeShipMetadata(senderRank)
+	receiverSize := DecodeShipMetadata(receiverRank)
+
+	senderTick := noun.Cut(0, 4, lBody)
+	receiverTick := noun.Cut(4, 4, lBody)
+	senderValue := noun.Cut(8, senderSize, lBody)
+	receiverValue := noun.Cut(8+senderSize, receiverSize, lBody)
+
+	content := B(0)
+	content.Rsh(lBody, uint(8+senderSize+receiverSize))
+
+	return senderValue, receiverValue, senderTick, receiverTick, content, nil
 }
 
 func makeEthRequest(nameHex string) (string, error) {
