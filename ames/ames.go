@@ -5,7 +5,6 @@ import (
 	"crypto/sha512"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"math/big"
 	"net/http"
 	"strings"
@@ -55,6 +54,43 @@ func ConstructPoke(path []string, mark string, data noun.Noun) noun.Noun {
 	return noun.MakeNoun([]interface{}{"g", path, 0, "m", mark, data})
 }
 
+func DestructPoke(n noun.Noun) ([]string, string, noun.Noun, error) {
+	path, err := destructPath(Head(Tail(n)))
+	if err != nil {
+		return []string{""}, "", MakeNoun(0), err
+	}
+	mark, err := AssertAtom(Snag(n, 4))
+	if err != nil {
+		return []string{""}, "", MakeNoun(0), err
+	}
+	data := Slag(n, 5)
+	return path, string(BigToLittle(mark.Value)), data, nil
+}
+
+func destructPath(n noun.Noun) ([]string, error) {
+	var strs []string
+
+	cur := n
+	cont := true
+
+	for cont {
+		switch cur.(type) {
+		case Cell:
+			hd := Head(cur)
+			st, err := AssertAtom(hd)
+			if err != nil {
+				return []string{}, err
+			}
+			strs = append(strs, string(BigToLittle(st.Value)))
+			cur = Tail(cur)
+		default:
+			cont = false
+			break
+		}
+	}
+	return strs, nil
+}
+
 func SplitMessage(num int, blob noun.Noun) []noun.Noun {
 	a := noun.Jam(blob)
 	l := a.BitLen()
@@ -70,8 +106,62 @@ func SplitMessage(num int, blob noun.Noun) []noun.Noun {
 	return acc
 }
 
+// JoinMessage is the reverse of SplitMessage
+func JoinMessage(n []noun.Noun) (int, noun.Noun, error) {
+	a, err := AssertAtom(Head(n[0]))
+	if err != nil {
+		return 0, MakeNoun(0), err
+	}
+	num := int(a.Value.Int64())
+	msg := B(0)
+
+	for k, v := range n {
+		// check if the message num is in correct order
+		n1, err := AssertAtom(Head(Tail(Tail(v))))
+		if err != nil {
+			return 0, MakeNoun(0), err
+		}
+		nIndex := int(n1.Value.Int64())
+
+		if k != nIndex {
+			return 0, MakeNoun(0), errors.New("out of order error")
+		}
+
+		frag, err := AssertAtom(Tail(Tail(Tail(v))))
+
+		if err != nil {
+			return 0, MakeNoun(0), err
+		}
+
+		msg = CatLen(msg, frag.Value, uint(k<<13))
+	}
+
+	full := Cue(msg)
+
+	return num, full, nil
+}
+
 func FragmentToShutPacket(frag noun.Noun, bone int) noun.Noun {
 	return noun.MakeNoun([]interface{}{bone, noun.Head(frag), 0, noun.Tail(frag)})
+}
+
+func ShutPacketToFragment(n Noun) (Noun, int, int, error) {
+	bn1, err := AssertAtom(Head(n))
+	if err != nil {
+		return noun.MakeNoun(0), 0, 0, nil
+	}
+	bn2 := BigToLittle(bn1.Value)
+	bone := int(B(0).SetBytes(bn2).Int64())
+
+	nm1, err := AssertAtom(Head(Tail(n)))
+	if err != nil {
+		return noun.MakeNoun(0), 0, 0, nil
+	}
+	nm2 := BigToLittle(nm1.Value)
+	num := int(B(0).SetBytes(nm2).Int64())
+	frag := MakeNoun([]interface{}{Head(Tail(n)), Tail(Tail(Tail(n)))})
+
+	return frag, int(bone), int(num), nil
 }
 
 func EncodeShutPacket(pkt noun.Noun, symKey []byte, from *big.Int, to *big.Int, fromLife, toLife int64) (noun.Noun, error) {
@@ -199,6 +289,7 @@ func hexSeedToBig(seed string) (*big.Int, bool) {
 func CreatePacket(path []string, mark string, data Noun, num int, bone int, symKey []byte, from, to *big.Int, fromLife, toLife int64) ([]byte, error) {
 	poke := ConstructPoke(path, mark, data)
 	msg := SplitMessage(num, poke)
+	// TODO: create each packet vs msg[0]
 	pat := FragmentToShutPacket(msg[0], bone)
 	pack, err := EncodeShutPacket(pat, symKey, from, to, fromLife, toLife)
 	if err != nil {
@@ -207,6 +298,24 @@ func CreatePacket(path []string, mark string, data Noun, num int, bone int, symK
 	packet := EncodePacket(pack)
 
 	return packet, nil
+}
+
+// ParsePacket is the reverse of CreatePacket
+func ParsePacket(pkt []byte, symKey []byte, fromLife, toLife int64) ([]string, string, Noun, int, int, *big.Int, *big.Int, int64, int64, error) {
+	from, to, fromTick, toTick, content, err := DecodePacket(pkt)
+	if err != nil {
+		return []string{""}, "", noun.MakeNoun(0), 0, 0, B(0), B(0), 0, 0, err
+	}
+
+	pat, err := DecodeShutPacket(content, symKey, from, to, fromTick, toTick, fromLife, toLife)
+	msg1, bone, num, err := ShutPacketToFragment(pat)
+	if err != nil {
+		return []string{""}, "", noun.MakeNoun(0), 0, 0, B(0), B(0), 0, 0, err
+	}
+	_, msg, err := JoinMessage([]noun.Noun{msg1})
+	path, mark, data, err := DestructPoke(msg)
+
+	return path, mark, data, num, bone, to, from, fromLife, toLife, nil
 }
 
 func DecodeShutPacket(content *big.Int, symKey []byte, from, to, fromTick, toTick *big.Int, fromLife, toLife int64) (noun.Noun, error) {
@@ -229,9 +338,7 @@ func DecodeShutPacket(content *big.Int, symKey []byte, from, to, fromTick, toTic
 
 	kHash := sha512.Sum512(symKey)
 
-	fmt.Println(aVec, cypherText)
 	decoded, err := urcrypt.UrcryptAESSivcDe(cypherText, aVec, kHash, ivs)
-	fmt.Println(decoded)
 
 	return noun.Cue(decoded), err
 }

@@ -137,7 +137,15 @@ func Rub(index int64, b *big.Int) (int64, Atom) {
 	return c + c + e.Int64(), Atom{Value: Cut(d+c-1, e.Int64(), b)}
 }
 
-func bConcat(a, b *big.Int) *big.Int {
+// CatLen is Cat but with a provided length
+func CatLen(a, b *big.Int, length uint) *big.Int {
+	b2 := B(0).Lsh(b, length)
+	a2 := B(0).Xor(a, b2)
+	return a2
+}
+
+// Cat concats two big ints
+func Cat(a, b *big.Int) *big.Int {
 	l := uint(a.BitLen())
 	b2 := B(0).Lsh(b, l)
 	a2 := B(0).Xor(a, b2)
@@ -235,7 +243,7 @@ func jamIn(nmap nounMap, n Noun, index int64) (int64, *big.Int) {
 			index += hidx
 			tidx, d2 := jamIn(nmap, t.Tail, index)
 			index += tidx
-			d3 := bConcat(d1, d2)
+			d3 := Cat(d1, d2)
 			d4 := B(0).Lsh(d3, 2)
 			d5 := B(0).Xor(d4, B(1))
 			return index, d5
@@ -284,6 +292,7 @@ func cueIn(nmap cueNounMap, b *big.Int, index int64) (int64, Noun) {
 	return i3 + 2, n3
 }
 
+// Cue is the opposite of Jam
 func Cue(b *big.Int) Noun {
 	var nmap cueNounMap = make(cueNounMap)
 	var index int64 = 0
@@ -303,4 +312,21 @@ func StringToCord(str string) Atom {
 // ByteLen returns the length of the big int in bytes
 func ByteLen(b *big.Int) int64 {
 	return int64(b.BitLen()-1)/8 + 1
+}
+
+// Snag gets the Head at the position pos
+func Snag(n Noun, pos int) Noun {
+	return Head(Slag(n, pos))
+}
+
+// Slag gets the Tail at the position pos
+func Slag(n Noun, pos int) Noun {
+	cur := n
+	i := 0
+
+	for i < pos {
+		cur = Tail(cur)
+		i++
+	}
+	return cur
 }

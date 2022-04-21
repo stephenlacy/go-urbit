@@ -1,6 +1,7 @@
 package ames
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -69,6 +70,102 @@ func TestEncodePacket(t *testing.T) {
 	r2 := EncodePacket(r1)
 	if !reflect.DeepEqual(c1, r2) {
 		t.Errorf("expected %v got %v", c1, r2)
+	}
+}
+
+func TestDestructPath(t *testing.T) {
+	a := []string{"one", "one", "two"}
+	nPath := noun.MakeNoun(a)
+	path, err := destructPath(nPath)
+
+	if err != nil {
+		t.Error(err)
+	}
+	if !reflect.DeepEqual(path, a) {
+		t.Errorf("expected %v got %v", a, path)
+	}
+}
+
+func TestJoinMessage(t *testing.T) {
+	num := 11
+	poke := ConstructPoke([]string{"path"}, "mark", noun.MakeNoun(noun.B(0).Exp(noun.B(2), noun.B(7000), nil)))
+	a := SplitMessage(num, poke)
+
+	n, poke2, err := JoinMessage(a)
+	if n != num {
+		t.Errorf("expected %d got %d", n, num)
+	}
+	fmt.Println(poke2, err)
+}
+
+func TestShutPacketToFragment(t *testing.T) {
+	num := 11
+	bone := 9
+	poke := ConstructPoke([]string{"path"}, "mark", noun.MakeNoun("data"))
+	msg := SplitMessage(num, poke)
+	pat := FragmentToShutPacket(msg[0], bone)
+	res, b, n, err := ShutPacketToFragment(pat)
+	if err != nil {
+		t.Error(err)
+	}
+	if b != bone {
+		t.Errorf("expected %v got %v", bone, b)
+	}
+	if n != num {
+		t.Errorf("expected %v got %v", num, n)
+	}
+	e1 := "[11 1 0 1139440589747613851334439309220300165109479259885505]"
+	if res.String() != e1 {
+		t.Errorf("expected %v got %v", e1, res.String())
+	}
+}
+
+func TestParsePacket(t *testing.T) {
+	seed := "10848742450084393055292986019175834315581274714688967213202092181691497678884554007131544538879740827205367656620731455195976623258197233159818107836502112858706829966037239382390357505"
+	bSeed := noun.B(0)
+	bSeed.SetString(seed, 10)
+
+	planet := "~litryl-tadmev"
+	ethRes, _ := Lookup(planet)
+
+	pubKey := noun.B(0)
+	pubKey.SetString(ethRes.EncryptionKey, 16)
+
+	var pubKeyArr [32]byte
+	copy(pubKeyArr[:], noun.BigToLittle(pubKey))
+
+	privKey := SeedToEncKey(bSeed)
+	symKey := urcrypt.UrcryptEdShar(pubKeyArr, privKey)
+	from, _ := noun.Patp2bn("~mister-wicdev-wisryt")
+	to, _ := noun.Patp2bn(planet)
+	fromLife := int64(1)
+	toLife := int64(1)
+
+	mrk := "helm-hi"
+	pth := []string{"ge", "hood"}
+
+	pkt, _ := CreatePacket(
+		pth,
+		mrk,
+		noun.MakeNoun("urbit-go"),
+		1,
+		1,
+		symKey,
+		from,
+		to,
+		fromLife,
+		toLife,
+	)
+
+	path, mark, _, _, _, to, from, fromLife, toLife, err := ParsePacket(pkt, symKey, fromLife, toLife)
+	if err != nil {
+		t.Error(err)
+	}
+	if !reflect.DeepEqual(path, pth) {
+		t.Errorf("expected %v got %v", pth, path)
+	}
+	if mark != mrk {
+		t.Errorf("expected %v got %v", mrk, mark)
 	}
 }
 
