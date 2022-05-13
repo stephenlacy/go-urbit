@@ -1,25 +1,54 @@
 package ames
 
 import (
+	"fmt"
 	"testing"
+
+	"github.com/stevelacy/go-urbit/noun"
 )
 
-func TestConnection(t *testing.T) {
+func TestConnectionMoon(t *testing.T) {
 
-	seed := "10848742450084393055292986019175834315581274714688967213202092181691497678884554007131544538879740827205367656620731455195976623258197233159818107836502112858706829966037239382390357505"
-	from := "~mister-wicdev-wisryt"
-	to := "~litryl-tadmev"
-	connection := Connection{}
-	_, err := connection.Connect(from, to, seed)
+	seed := "0x5.f374.9e59.1ea2.fdfd.8165.5c0d.0e2c.0c5a.41b5.bb6b.8962.ab31.0a1c.c221.885d.b876.6f65.4a12.dbdc.645e.531e.5194.8d4d.4251.ad01.d96a.6f4a.c871.fb28.3a5a.d858.c9e1.080f.000e.3c3c.13ba.8007.0280.7a01"
+
+	ames, err := NewAmes(seed)
 	if err != nil {
 		t.Error(err)
 	}
 
-	/* data := noun.MakeNoun([]interface{}{noun.MakeNoun(0x10100), 0})
-	res, err := connection.Request([]string{"ge", "hood"}, "helm-send-hi", data)
-	fmt.Println("pkt:", res)
+	to := "~litryl-tadmev"
+	c1, err := ames.Connect(to)
 	if err != nil {
 		t.Error(err)
-	} */
-	select {}
+	}
+	fmt.Println("bone:", c1.bone)
+
+	_, err = c1.Request([]string{"ge", "hood"}, "helm-hi", noun.MakeNoun("yay!"))
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	c2, err := ames.Connect(to)
+	if err != nil {
+		t.Error(err)
+	}
+
+	_, err = c2.Request([]string{"ge", "hood"}, "helm-hi", noun.MakeNoun("second message"))
+}
+
+func ExampleNewAmes() {
+	// Easiest way to connect with defaults
+	seed := "0x5.f374.9e59.1ea2.fdfd.8165.5c0d.0e2c.0c5a.41b5.bb6b.8962.ab31.0a1c.c221.885d.b876.6f65.4a12.dbdc.645e.531e.5194.8d4d.4251.ad01.d96a.6f4a.c871.fb28.3a5a.d858.c9e1.080f.000e.3c3c.13ba.8007.0280.7a01"
+
+	ames, err := NewAmes(seed)
+	if err != nil {
+		panic(err)
+	}
+	to := "~litryl-tadmev"
+	conn, err := ames.Connect(to)
+	if err != nil {
+		fmt.Println(err)
+	}
+	conn.Request([]string{"ge", "hood"}, "helm-hi", noun.MakeNoun("message here"))
 }

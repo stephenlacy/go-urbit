@@ -7,6 +7,7 @@ import (
 	"errors"
 	"math/big"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/stevelacy/go-urbit/noun"
@@ -23,6 +24,7 @@ type LookupResponse struct {
 	EncryptionKey     string
 	AuthenticationKey string
 	Sponsor           string
+	Life              int64
 }
 
 type ETHResponse struct {
@@ -39,12 +41,18 @@ func Lookup(name string) (LookupResponse, error) {
 	if err != nil {
 		return LookupResponse{}, err
 	}
+	if len(res) < 64 {
+		return LookupResponse{}, errors.New("Invalid ETH response")
+	}
 	// remove 0x prefix then split by 64 chars
 	parts := noun.Chunks(res[2:], 64)
+
+	life, err := strconv.Atoi(parts[8])
 	resp := LookupResponse{
 		EncryptionKey:     parts[0],
 		AuthenticationKey: parts[1],
 		Sponsor:           parts[5],
+		Life:              int64(life),
 	}
 
 	return resp, err
@@ -145,23 +153,27 @@ func FragmentToShutPacket(frag noun.Noun, bone int) noun.Noun {
 	return noun.MakeNoun([]interface{}{bone, noun.Head(frag), 0, noun.Tail(frag)})
 }
 
-func ShutPacketToFragment(n Noun) (Noun, int, int, error) {
+func ShutPacketToFragment(n Noun) (Noun, int, int, bool, error) {
 	bn1, err := AssertAtom(Head(n))
 	if err != nil {
-		return noun.MakeNoun(0), 0, 0, nil
+		return noun.MakeNoun(0), 0, 0, false, nil
 	}
 	bn2 := BigToLittle(bn1.Value)
 	bone := int(B(0).SetBytes(bn2).Int64())
 
 	nm1, err := AssertAtom(Head(Tail(n)))
 	if err != nil {
-		return noun.MakeNoun(0), 0, 0, nil
+		return noun.MakeNoun(0), 0, 0, false, nil
 	}
 	nm2 := BigToLittle(nm1.Value)
 	num := int(B(0).SetBytes(nm2).Int64())
+	// check type of packet
+	ty, err := AssertAtom((Head(Tail(Tail(n)))))
+	// 0 is a fragment
+	isFrag := ty.Value.Cmp(B(0)) == 0
 	frag := MakeNoun([]interface{}{Head(Tail(n)), Tail(Tail(Tail(n)))})
 
-	return frag, int(bone), int(num), nil
+	return frag, int(bone), int(num), isFrag, nil
 }
 
 func EncodeShutPacket(pkt noun.Noun, symKey []byte, from *big.Int, to *big.Int, fromLife, toLife int64) (noun.Noun, error) {
@@ -267,15 +279,31 @@ func DecodeShipMetadata(rank byte) int64 {
 	return 128
 }
 
-func SeedToEncKey(seed *big.Int) [32]byte {
+// ParseSeed retrieves the values from a seed
+func ParseSeed(seed *big.Int) (*big.Int, *big.Int, [32]byte, error) {
 	a1 := Cue(seed)
-	a2 := Head(Tail(Tail(a1)))
+
+	bn := Head(a1) // name
+	nm, err := AssertAtom(bn)
+	if err != nil {
+		return B(0), B(0), [32]byte{}, err
+	}
+	name := nm.Value
+
+	bl := Head(Tail(a1)) // life
+	li, err := AssertAtom(bl)
+	if err != nil {
+		return B(0), B(0), [32]byte{}, err
+	}
+	life := li.Value
+
+	a2 := Head(Tail(Tail(a1))) // key
 	a3, _ := AssertAtom(a2)
 	b1 := B(0).Rsh(a3.Value, 8+256)
 	b2 := BigToLittle(b1)
-	var b3 [32]byte
-	copy(b3[:], b2)
-	return b3
+	var privKey [32]byte
+	copy(privKey[:], b2)
+	return name, life, privKey, nil
 }
 
 func hexSeedToBig(seed string) (*big.Int, bool) {
@@ -284,38 +312,6 @@ func hexSeedToBig(seed string) (*big.Int, bool) {
 		return b.SetString(strings.ReplaceAll(seed, ".", ""), 0)
 	}
 	return b.SetString(seed, 10)
-}
-
-func CreatePacket(path []string, mark string, data Noun, num int, bone int, symKey []byte, from, to *big.Int, fromLife, toLife int64) ([]byte, error) {
-	poke := ConstructPoke(path, mark, data)
-	msg := SplitMessage(num, poke)
-	// TODO: create each packet vs msg[0]
-	pat := FragmentToShutPacket(msg[0], bone)
-	pack, err := EncodeShutPacket(pat, symKey, from, to, fromLife, toLife)
-	if err != nil {
-		return []byte{}, err
-	}
-	packet := EncodePacket(pack)
-
-	return packet, nil
-}
-
-// ParsePacket is the reverse of CreatePacket
-func ParsePacket(pkt []byte, symKey []byte, fromLife, toLife int64) ([]string, string, Noun, int, int, *big.Int, *big.Int, int64, int64, error) {
-	from, to, fromTick, toTick, content, err := DecodePacket(pkt)
-	if err != nil {
-		return []string{""}, "", noun.MakeNoun(0), 0, 0, B(0), B(0), 0, 0, err
-	}
-
-	pat, err := DecodeShutPacket(content, symKey, from, to, fromTick, toTick, fromLife, toLife)
-	msg1, bone, num, err := ShutPacketToFragment(pat)
-	if err != nil {
-		return []string{""}, "", noun.MakeNoun(0), 0, 0, B(0), B(0), 0, 0, err
-	}
-	_, msg, err := JoinMessage([]noun.Noun{msg1})
-	path, mark, data, err := DestructPoke(msg)
-
-	return path, mark, data, num, bone, to, from, fromLife, toLife, nil
 }
 
 func DecodeShutPacket(content *big.Int, symKey []byte, from, to, fromTick, toTick *big.Int, fromLife, toLife int64) (noun.Noun, error) {
@@ -339,6 +335,9 @@ func DecodeShutPacket(content *big.Int, symKey []byte, from, to, fromTick, toTic
 	kHash := sha512.Sum512(symKey)
 
 	decoded, err := urcrypt.UrcryptAESSivcDe(cypherText, aVec, kHash, ivs)
+	if err != nil {
+		return MakeNoun(0), err
+	}
 
 	return noun.Cue(decoded), err
 }

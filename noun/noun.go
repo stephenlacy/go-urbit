@@ -19,6 +19,7 @@ func (e *InvalidAtomError) Error() string {
 	return e.Message
 }
 
+// Noun is data
 type Noun interface {
 	isNoun() bool
 	String() string
@@ -96,6 +97,7 @@ func AssertAtom(n Noun) (Atom, error) {
 	}
 }
 
+// Cut takes value from start including run
 func Cut(start, run int64, b *big.Int) *big.Int {
 	b1 := B(0).Rsh(b, uint(start))
 	c1 := B(0).Mod(b1, B(0).Lsh(B(1), uint(run)))
@@ -294,6 +296,9 @@ func cueIn(nmap cueNounMap, b *big.Int, index int64) (int64, Noun) {
 
 // Cue is the opposite of Jam
 func Cue(b *big.Int) Noun {
+	if b.Cmp(B(0)) == 0 {
+		return MakeNoun(0)
+	}
 	var nmap cueNounMap = make(cueNounMap)
 	var index int64 = 0
 

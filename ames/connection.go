@@ -14,173 +14,130 @@ import (
 	"github.com/stevelacy/go-urbit/urcrypt"
 )
 
+var ZOD = "~zod"
+
+type Ames struct {
+	PrivateKey [32]byte
+	breach     bool
+	Ship       *big.Int
+	Life       int64
+	RAddr      *net.UDPAddr
+	conn       *net.UDPConn
+	Peers      map[string]*Peer
+	connected  bool
+	OnMessage  func(c *Connection, msg noun.Noun)
+}
+
 type Connection struct {
-	pubKey    *big.Int
-	privKey   [32]byte
+	ames      *Ames
 	mut       sync.Mutex
-	from, to  *big.Int
 	bone, num int
-	conn      *net.UDPConn
-	connected bool
-	rAddr     *net.UDPAddr
-	symKey    []byte
-	breach    bool
+	Peer      *Peer
 }
 
-func NewConnection(from, to, seed string) (*Connection, error) {
-	conn := Connection{
-		connected: false,
-		breach:    true,
-	}
-	err := conn.Connect(from, to, seed)
-	return &conn, err
+type Peer struct {
+	ship        *big.Int
+	pubKey      *big.Int
+	symKey      []byte
+	life        int64
+	Connections map[int]*Connection
+	nextBone    int
 }
 
-// Connect initiates a connection with ames
-func (c *Connection) Connect(from string, to string, seed string) error {
+type Packet struct {
+	Path []string
+	Mark string
+	Data noun.Noun
+	Num  int
+}
 
-	raddr, err := net.ResolveUDPAddr("udp", zodAddr)
-	if err != nil {
-		return err
-	}
-	c.rAddr = raddr
-
+func NewAmes(seed string) (*Ames, error) {
 	bSeed, ok := hexSeedToBig(seed)
 	if !ok {
-		return errors.New("Invalid seed value or encoding provided")
+		return &Ames{}, errors.New("Invalid seed value or encoding provided")
 	}
-	c.privKey = SeedToEncKey(bSeed)
-	c.from, err = noun.Patp2bn(from)
+	shp, life, privKey, err := ParseSeed(bSeed)
+	ames := &Ames{
+		breach:     true,
+		Ship:       shp,
+		Life:       life.Int64(),
+		PrivateKey: privKey,
+		Peers:      make(map[string]*Peer),
+	}
+	raddr, err := net.ResolveUDPAddr("udp", zodAddr)
 	if err != nil {
-		return err
+		return ames, err
 	}
 
-	// query to addr on eth
-	ethRes, err := Lookup(to)
-	if err != nil {
-		return err
-	}
+	ames.RAddr = raddr
 
 	// create local listener with random port
 	conn, err := net.ListenUDP("udp", nil)
+	conn.SetReadBuffer(4096 * 16)
 	if err != nil {
-		return err
+		return ames, err
 	}
-	c.conn = conn
+	ames.conn = conn
 
 	// handle all incoming packets
-	go c.handleConn()
+	go ames.handleConn()
 
-	// ping target
+	// breach parent
+	parent := noun.B(0).Mod(ames.Ship, noun.Bex(noun.B(32)))
 
-	c.pubKey = noun.B(0)
-	c.pubKey.SetString(ethRes.EncryptionKey, 16)
-
-	var pubKeyArr [32]byte
-	copy(pubKeyArr[:], noun.BigToLittle(c.pubKey))
-
-	c.symKey = urcrypt.UrcryptEdShar(pubKeyArr, c.privKey)
-
-	c.to, err = noun.Patp2bn(to)
+	patp, err := noun.BN2patp(parent)
+	fmt.Println("connecting to:", patp)
 	if err != nil {
-		return err
+		return ames, err
 	}
 
-	fromLife := int64(1)
-	toLife := int64(1)
-
-	// set bone to 1
-	c.bone = 1
-	c.num = 1
+	c, err := ames.Connect(patp)
+	if err != nil {
+		return ames, err
+	}
 
 	// breach moon before connecting
 	// this prevents bone and message num conflicts
-	if c.breach == true {
-		breachBone := 9 // reserved for breaching
-		breachFrom, err := noun.Patp2bn(from)
-
-		if err != nil {
-			return err
-		}
-
+	if c.ames.breach == true {
 		// breach with helm-moon-breach
-		pkt, err := CreatePacket(
+		_, err := c.Request(
 			[]string{"ge", "hood"},
 			"helm-moon-breach",
-			noun.MakeNoun(breachFrom),
-			c.num,
-			breachBone,
-			c.symKey,
-			c.from,
-			c.to,
-			fromLife,
-			toLife,
+			noun.MakeNoun(c.ames.Ship),
 		)
 		if err != nil {
-			return err
-		}
-		_, err = c.SendPacket(pkt)
-
-		if err != nil {
-			return err
+			return ames, err
 		}
 	}
+	// delay for zod to catch up
+	time.Sleep(2 * time.Second)
 
 	// ping zod after breach
-	err = c.initZod()
+	err = ames.initZod()
 	if err != nil {
-		return err
+		return ames, err
 	}
 	// wait until zod responds as connected
-	for c.connected == false {
+	for ames.connected == false {
 		time.Sleep(1 * time.Second)
 	}
-
-	// now ping target
-	_, err = c.Request(
-		[]string{"ge", "hood"},
-		"helm-hi",
-		noun.MakeNoun("urbit-go"),
-	)
-
-	return err
+	return ames, err
 }
 
-func (c *Connection) initZod() error {
-	zodPatp, err := noun.Patp2bn("~zod")
-	if err != nil {
-		return err
-	}
+// initZod initiates the ames vane through zod
+func (a *Ames) initZod() error {
+	c, err := a.Connect(ZOD)
 
-	// query zod on eth
-	ethZodRes, err := Lookup("~zod")
-	if err != nil {
-		return err
-	}
-
-	zodPubkey := noun.B(0)
-	zodPubkey.SetString(ethZodRes.EncryptionKey, 16)
-	var pubZodKeyArr [32]byte
-	copy(pubZodKeyArr[:], noun.BigToLittle(zodPubkey))
-	zodSymKey := urcrypt.UrcryptEdShar(pubZodKeyArr, c.privKey)
-
-	pkt, err := CreatePacket(
+	pkt, err := c.CreatePacket(
 		[]string{"ge", "hood"},
 		"helm-hi",
 		noun.MakeNoun("urbit-go"),
-		1, // zod num (1)
-		1, // zod bone (1)
-		zodSymKey,
-		c.from,
-		zodPatp,
-		int64(1), // zod from life (1)
-		int64(6), // zod to life (6)
 	)
 	if err != nil {
 		return err
 	}
 
-	_, err = c.SendPacket(pkt)
+	_, err = a.SendPacket(pkt)
 	if err != nil {
 		return err
 	}
@@ -192,9 +149,8 @@ func (c *Connection) initZod() error {
 		for {
 			select {
 			case <-ticker.C:
-				_, err = c.SendPacket(pkt)
+				_, err = a.SendPacket(pkt)
 				count++
-				fmt.Println("zod ", count)
 			}
 		}
 	}()
@@ -202,45 +158,197 @@ func (c *Connection) initZod() error {
 	return err
 }
 
-// Request sends a mark and noun to a connected ship
+func (a *Ames) newPeer(name *big.Int) (Peer, error) {
+	peer := Peer{
+		ship:        name,
+		nextBone:    1,
+		Connections: make(map[int]*Connection),
+	}
+
+	bnp, err := noun.BN2patp(name)
+	if err != nil {
+		return peer, err
+	}
+	// query to addr on eth
+	ethRes, err := Lookup(bnp)
+	if err != nil {
+		return peer, err
+	}
+	symKey := a.GenerateSymKey(ethRes.EncryptionKey)
+
+	peer.symKey = symKey
+	peer.life = ethRes.Life
+	return peer, nil
+}
+
+func (a *Ames) GetPeer(name *big.Int) (*Peer, error) {
+	n, err := noun.BN2patp(name)
+	if err != nil {
+		return &Peer{}, err
+	}
+	peer, ok := a.Peers[n]
+	if ok {
+		return peer, nil
+	}
+	p, err := a.newPeer(name)
+	if err != nil {
+		return &Peer{}, err
+	}
+	a.Peers[n] = &p
+	return &p, nil
+}
+
+func (a *Ames) Connect(name string) (*Connection, error) {
+	p, err := noun.Patp2bn(name)
+	if err != nil {
+		return &Connection{}, err
+	}
+	peer, err := a.GetPeer(p)
+	return a.GetConnection(p, peer.nextBone)
+}
+
+// GetConnection retrieves or creates a Connection
+func (a *Ames) GetConnection(p *big.Int, bone int) (*Connection, error) {
+	peer, err := a.GetPeer(p)
+	if err != nil {
+		return &Connection{}, err
+	}
+	cn, ok := peer.Connections[bone]
+	if ok {
+		return cn, nil
+	}
+	c := Connection{
+		Peer: peer,
+		bone: bone,
+		ames: a,
+		num:  1,
+	}
+	peer.Connections[bone] = &c
+	peer.nextBone += 4
+	return &c, nil
+}
+
+func (a *Ames) GenerateSymKey(encryptionKey string) []byte {
+	theirPubkey := noun.B(0)
+	theirPubkey.SetString(encryptionKey, 16)
+	var pubTheirKeyArr [32]byte
+	copy(pubTheirKeyArr[:], noun.BigToLittle(theirPubkey))
+	return urcrypt.UrcryptEdShar(pubTheirKeyArr, a.PrivateKey)
+}
+
+// Request sends a mark and data (noun) to a connected ship
 func (c *Connection) Request(path []string, mark string, data noun.Noun) ([]byte, error) {
 	c.mut.Lock()
 	defer c.mut.Unlock()
-	var pubKeyArr [32]byte
-	copy(pubKeyArr[:], noun.BigToLittle(c.pubKey))
 
-	fromLife := int64(1)
-	toLife := int64(1)
-
-	pkt, err := CreatePacket(path, mark, data, c.num, c.bone, c.symKey, c.from, c.to, fromLife, toLife)
+	pkt, err := c.CreatePacket(path, mark, data)
 	c.num++
 	if err != nil {
 		return nil, err
 	}
-	_, err = c.SendPacket(pkt)
+	_, err = c.ames.SendPacket(pkt)
 	return pkt, err
 }
 
-func (c *Connection) handleConn() {
-	buf := make([]byte, 0, 4096)
-	tmp := make([]byte, 512)
-	for {
-		a, err := bufio.NewReader(c.conn).Read(tmp)
-		fmt.Println("for read", tmp, err)
-		// TODO check for response from zod
-		if err != nil {
-			fmt.Println("close:", err)
-			if err != io.EOF {
-				fmt.Println("conn error:", err)
-			}
-			break
-		}
-		buf = append(buf, tmp[:a]...)
-		fmt.Println(buf)
+func (c *Connection) CreatePacket(path []string, mark string, data noun.Noun) ([]byte, error) {
+	poke := ConstructPoke(path, mark, data)
+	msg := SplitMessage(c.num, poke)
+	// TODO: create each packet vs msg[0]
+	pat := FragmentToShutPacket(msg[0], c.bone)
+	pack, err := EncodeShutPacket(pat, c.Peer.symKey, c.ames.Ship, c.Peer.ship, c.ames.Life, c.Peer.life)
+	if err != nil {
+		return []byte{}, err
 	}
-	fmt.Println(buf)
+	packet := EncodePacket(pack)
+
+	return packet, nil
 }
 
-func (c *Connection) SendPacket(pkt []byte) (int, error) {
-	return c.conn.WriteToUDP(pkt, c.rAddr)
+func (a *Ames) handleConn() {
+	for {
+		fmt.Println("for loop")
+		buf := make([]byte, 0)
+		tmp := make([]byte, 4096)
+
+		for {
+			ln, err := bufio.NewReader(a.conn).Read(tmp)
+			if err != nil {
+				fmt.Println("close:", err)
+				if err != io.EOF {
+					fmt.Println("conn error:", err)
+				}
+				break
+			}
+			buf = append(buf, tmp[:ln]...)
+			if ln < 4096 {
+				break
+			}
+		}
+		packet, c, err := a.ParsePacket(buf)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		fmt.Println("finished", packet.Path, packet.Mark)
+		// if res is from zod
+		if c.Peer.ship.Cmp(noun.B(0)) == 0 && !a.connected {
+			// we are now connected
+			a.connected = true
+		}
+
+		// TODO:
+		// a.OnMessage(c, data)
+	}
+}
+
+// ParsePacket is the reverse of CreatePacket
+func (a *Ames) ParsePacket(pkt []byte) (Packet, *Connection, error) {
+	from, to, fromTick, toTick, content, err := DecodePacket(pkt)
+	if err != nil {
+		return Packet{}, &Connection{}, err
+	}
+
+	peer, err := a.GetPeer(from)
+
+	if err != nil {
+		return Packet{}, &Connection{}, err
+	}
+
+	pat, err := DecodeShutPacket(content, peer.symKey, from, to, fromTick, toTick, peer.life, a.Life)
+	if err != nil {
+		return Packet{}, &Connection{}, err
+	}
+	msg1, bone, num, isFrag, err := ShutPacketToFragment(pat)
+	if err != nil {
+		return Packet{}, &Connection{}, err
+	}
+
+	conn, err := a.GetConnection(from, bone)
+	if isFrag {
+		_, msg, err := JoinMessage([]noun.Noun{msg1})
+		if err != nil {
+			return Packet{}, &Connection{}, err
+		}
+		path, mark, data, err := DestructPoke(msg)
+		packet := Packet{
+			Path: path,
+			Mark: mark,
+			Data: data,
+			Num:  num,
+		}
+
+		return packet, conn, err
+	}
+	ack := Packet{
+		Path: []string{""},
+		Mark: "ack",
+		Data: noun.MakeNoun(0),
+		Num:  num,
+	}
+	return ack, conn, nil
+}
+
+// SendPacket writes the packet input to the connected target
+func (a *Ames) SendPacket(pkt []byte) (int, error) {
+	return a.conn.WriteToUDP(pkt, a.RAddr)
 }

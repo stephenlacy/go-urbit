@@ -22,6 +22,7 @@ func TestMug(t *testing.T) {
 		t.Errorf("expected %d got %d", c2, res2)
 	}
 }
+
 func TestMuk(t *testing.T) {
 	a1 := uint32(3744000282)
 	res := Muk(0xb76d5eed, 2, big.NewInt(1501))

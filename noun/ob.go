@@ -44,18 +44,18 @@ func Patp2hex(name string) (string, error) {
 	return bn.Text(16), nil
 }
 
-func bex(n *big.Int) *big.Int {
+func Bex(n *big.Int) *big.Int {
 	return B(0).Exp(B(2), n, nil)
 }
 
 func rsh(a, b, c *big.Int) *big.Int {
-	be := bex(a)
-	return B(0).Div(c, bex(B(0).Mul(be, b)))
+	be := Bex(a)
+	return B(0).Div(c, Bex(B(0).Mul(be, b)))
 }
 
 func end(a, b, c *big.Int) *big.Int {
-	be := bex(a)
-	return B(0).Mod(c, bex(be.Mul(be, b)))
+	be := Bex(a)
+	return B(0).Mod(c, Bex(be.Mul(be, b)))
 }
 
 func met(a, b, c *big.Int) *big.Int {
