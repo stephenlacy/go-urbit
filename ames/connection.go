@@ -16,6 +16,8 @@ import (
 
 var ZOD = "~zod"
 
+type OnPacket func(c *Connection, pkt Packet)
+
 type Ames struct {
 	PrivateKey [32]byte
 	breach     bool
@@ -25,7 +27,7 @@ type Ames struct {
 	conn       *net.UDPConn
 	Peers      map[string]*Peer
 	connected  bool
-	OnMessage  func(c *Connection, msg noun.Noun)
+	OnPacket
 }
 
 type Connection struct {
@@ -51,7 +53,7 @@ type Packet struct {
 	Num  int
 }
 
-func NewAmes(seed string) (*Ames, error) {
+func NewAmes(seed string, onPacket OnPacket) (*Ames, error) {
 	bSeed, ok := hexSeedToBig(seed)
 	if !ok {
 		return &Ames{}, errors.New("Invalid seed value or encoding provided")
@@ -63,6 +65,7 @@ func NewAmes(seed string) (*Ames, error) {
 		Life:       life.Int64(),
 		PrivateKey: privKey,
 		Peers:      make(map[string]*Peer),
+		OnPacket:   onPacket,
 	}
 	raddr, err := net.ResolveUDPAddr("udp", zodAddr)
 	if err != nil {
@@ -217,15 +220,15 @@ func (a *Ames) GetConnection(p *big.Int, bone int) (*Connection, error) {
 	if ok {
 		return cn, nil
 	}
-	c := Connection{
+	c := &Connection{
 		Peer: peer,
 		bone: bone,
 		ames: a,
 		num:  1,
 	}
-	peer.Connections[bone] = &c
+	peer.Connections[bone] = c
 	peer.nextBone += 4
-	return &c, nil
+	return c, nil
 }
 
 func (a *Ames) GenerateSymKey(encryptionKey string) []byte {
@@ -266,7 +269,6 @@ func (c *Connection) CreatePacket(path []string, mark string, data noun.Noun) ([
 
 func (a *Ames) handleConn() {
 	for {
-		fmt.Println("for loop")
 		buf := make([]byte, 0)
 		tmp := make([]byte, 4096)
 
@@ -289,15 +291,16 @@ func (a *Ames) handleConn() {
 			fmt.Println(err)
 			return
 		}
-		fmt.Println("finished", packet.Path, packet.Mark)
 		// if res is from zod
 		if c.Peer.ship.Cmp(noun.B(0)) == 0 && !a.connected {
 			// we are now connected
 			a.connected = true
 		}
 
-		// TODO:
-		// a.OnMessage(c, data)
+		// messages
+		if a.OnPacket != nil {
+			a.OnPacket(c, packet)
+		}
 	}
 }
 
