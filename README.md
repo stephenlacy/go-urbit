@@ -1,7 +1,10 @@
-# go-urbit [WIP]
+# go-urbit
 > golang interface for Urbit
 
-## Usage
+
+## Ames
+
+### Usage
 
 > Note: each running app _must_ have it's own moon identity. Running on kubernetes or other systems with more than 1 replica per identity will result in odd behavior.
 
@@ -25,7 +28,11 @@ The output value is the seed, or secret key, for your newly created moon.
 func main() {
 	seed := "the hex seed"
 
-	ames, err := NewAmes(seed)
+	onPacket := func(c *Connection, pkt Packet) {
+		fmt.Println("ames OnPacket", pkt.Data)
+	}
+
+	ames, err := NewAmes(seed, onPacket)
 	if err != nil {
 		panic(err)
 	}
@@ -36,7 +43,7 @@ func main() {
 		panic(err)
 	}
 
-	_, err := connection.Request([]string{"ge", "hood", "helm-hi", noun.MakeNoun("it works!")})
+	_, err := connection.Request([]string{"ge", "hood"}, "helm-hi", noun.MakeNoun("it works!"))
 
 	if err != nil {
 		panic(err)
