@@ -1,6 +1,12 @@
 # go-urbit
 > golang interface for Urbit
 
+<p align="center">
+	<img src="https://github.com/stevelacy/go-urbit/raw/master/urbit.go.png" width="300">
+</p>
+
+[![GoDoc](https://godoc.org/github.com/stevelacy/go-urbit?status.svg)](https://godoc.org/github.com/stevelacy/go-urbit)
+
 Allows golang applications running as moons to connect to urbit ships over ames. Also implements noun functions.
 
 This can be used by any unix host, including deployed services and IoT projects.
