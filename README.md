@@ -1,6 +1,10 @@
 # go-urbit
 > golang interface for Urbit
 
+Allows golang applications running as moons to connect to urbit ships over ames. Also implements noun functions.
+
+This can be used by any unix host, including deployed services and IoT projects.
+
 
 ## Ames
 
@@ -52,6 +56,23 @@ func main() {
 ```
 
 
+## Noun
+
+Most of the common urbit noun functions are available in the `go-urbit/noun` package
+
+```go
+import (
+	"github.com/stevelacy/go-urbit/noun"
+)
+
+func main() {
+  n := noun.MakeNoun("string", 1234)
+  fmt.Println(n)
+}
+
+```
+
+
 ### Installation
 > Tested on macos M1
 
@@ -96,3 +117,22 @@ cd urcrypt/
 make
 sudo make install
 ```
+
+
+#### Testing
+
+```
+export MOON_SEED="your seed"
+
+go test ./..
+```
+
+
+
+
+TODO:
+- split each packet in `CreatePacket`
+
+
+
+~litryl-tadmev
