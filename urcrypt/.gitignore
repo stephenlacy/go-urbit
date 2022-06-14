@@ -47,7 +47,6 @@ s/*
 *.la
 *.lo
 *.o
-*.in
 *.pc
 *.m4
 *.pc
@@ -108,3 +107,5 @@ build-aux/m4/lt~obsolete.m4
 # can automatically generate from config.status script
 # (which is called by configure script))
 Makefile
+configure~
+config.h.in~

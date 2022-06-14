@@ -82,14 +82,14 @@ func main() {
 
 
 ```
-brew install openssl
+brew install openssl pkg-config
 ```
 
 ```
 git clone git@github.com:bitcoin-core/secp256k1.git
 cd secp256k1
 ./autogen.sh
-./configure --enable-module-recovery
+./configure --enable-module-recovery --enable-module-extrakeys --enable-module-schnorrsig
 
 make
 sudo make install
@@ -99,8 +99,10 @@ sudo make install
 If on macos M1
 ```
 export PATH="/opt/homebrew/opt/openssl@3/bin:$PATH"
-export CPPFLAGS="-I/opt/homebrew/opt/openssl@3/include"
-export LDFLAGS="-L/opt/homebrew/opt/openssl@3/lib"
+export CPPFLAGS="-I/opt/homebrew/opt/openssl@3/include -I/usr/local/include"
+export LDFLAGS="-L/opt/homebrew/opt/openssl@3/lib -L/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib -L/usr/local/lib/"
+export SDKROOT="/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
+export PKG_CONFIG_PATH="/opt/homebrew/opt/openssl@3/lib/pkgconfig"
 
 
 git clone git@github.com:dfoxfranke/libaes_siv.git
