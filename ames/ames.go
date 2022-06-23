@@ -360,7 +360,7 @@ func DecodePacket(pkt []byte) (*big.Int, *big.Int, *big.Int, *big.Int, *big.Int,
 
 	lBody := LittleToBig(body)
 	if isRelay {
-		lBody.Rsh(lBody, uint(6))
+		lBody.Rsh(lBody, uint(48))
 	}
 	nBody := noun.MakeNoun(lBody)
 
