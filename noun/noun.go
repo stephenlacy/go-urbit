@@ -236,7 +236,7 @@ func jamIn(nmap nounMap, n Noun, index int64) (int64, *big.Int) {
 	case Atom:
 		{
 			d := Mat(t.Value)
-			return 1 + d[0].Int64(), d[1].Lsh(d[1], 1)
+			return 1 + d[0].Int64(), B(0).Lsh(d[1], 1)
 		}
 	case Cell:
 		{

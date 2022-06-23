@@ -90,6 +90,20 @@ func TestJam(t *testing.T) {
 
 }
 
+func TestJamInterface(t *testing.T) {
+	ia := []interface{}{44, 55, 66}
+	ib := []interface{}{2, 2}
+	ic := []interface{}{ia, ib}
+	id := []interface{}{ic, ib}
+	n := MakeNoun(id)
+	r1 := Jam(n)
+	c1 := Cue(r1)
+	fmt.Println(c1)
+	if r1.String() != "229690868248641971000341" {
+		t.Errorf("expected %s got %s", "229690868248641971000341", r1.String())
+	}
+}
+
 func TestCue(t *testing.T) {
 	n1 := B(17176641)
 	r1 := Cue(n1)
@@ -105,6 +119,14 @@ func TestCue(t *testing.T) {
 	r2 := Cue(B(5322556398681252101))
 	if r2.String() != n2.String() {
 		t.Errorf("expected %s got %s", n2, r2)
+	}
+
+	s1 := B(0)
+	// map[2:[[1 1] 2 2] 4:[1 1] 6:1 10:1 14:[2 2] 16:2 23:2]
+	s1.SetString("3886480388885", 10)
+	c2 := Cue(s1)
+	if c2.String() != "[[[1 1] 2 2] 2 2]" {
+		t.Errorf("expected %s got %s", "[[[1 1] 2 2] 2 2]", c2.String())
 	}
 }
 
