@@ -77,6 +77,17 @@ func TestJam(t *testing.T) {
 	if r3.Text(10) != c1 {
 		t.Errorf("expected %s got %s", c1, r3)
 	}
+
+	x := []interface{}{1, 1}
+	y := []interface{}{2, 2}
+	xy := MakeNoun([]interface{}{x, y})
+	xyy := MakeNoun([]interface{}{xy, y})
+	rxyy := Jam(xyy)
+	txyy := "3886480388885"
+	if rxyy.Text(10) != txyy {
+		t.Errorf("expected %s got %s", txyy, rxyy)
+	}
+
 }
 
 func TestCue(t *testing.T) {

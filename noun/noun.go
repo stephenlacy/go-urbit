@@ -240,15 +240,12 @@ func jamIn(nmap nounMap, n Noun, index int64) (int64, *big.Int) {
 		}
 	case Cell:
 		{
-			index += 2
-			hidx, d1 := jamIn(nmap, t.Head, index)
-			index += hidx
-			tidx, d2 := jamIn(nmap, t.Tail, index)
-			index += tidx
+			hidx, d1 := jamIn(nmap, t.Head, index+2)
+			tidx, d2 := jamIn(nmap, t.Tail, index+2+hidx)
 			d3 := Cat(d1, d2)
 			d4 := B(0).Lsh(d3, 2)
 			d5 := B(0).Xor(d4, B(1))
-			return index, d5
+			return 2 + hidx + tidx, d5
 		}
 	}
 	return index, B(0)
