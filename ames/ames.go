@@ -355,7 +355,7 @@ func DecodePacket(pkt []byte) (*big.Int, *big.Int, *big.Int, *big.Int, *big.Int,
 	}
 	senderRank := (header[0] >> 7 & 0b1) ^ ((header[1] >> 0 & 0b1) << 1)
 	receiverRank := header[1] >> 1 & 0b11
-	checksum = (uint32(header[1]) >> 3 & 0b1111) ^ (uint32(header[2]) << 5) ^ ((uint32(header[3]) >> 0 & 0b1111111) << 13)
+	checksum = (uint32(header[1]) >> 3 & 0b11111) ^ (uint32(header[2]) << 5) ^ ((uint32(header[3]) >> 0 & 0b1111111) << 13)
 	isRelay := (header[3] >> 7 & 0b1) == 0
 
 	lBody := LittleToBig(body)
