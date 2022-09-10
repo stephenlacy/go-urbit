@@ -140,7 +140,7 @@ func (a *Ames) initZod() error {
 		return err
 	}
 
-	_, err = a.SendPacket(pkt)
+	_, err = a.SendPacket(pkt[0])
 	if err != nil {
 		return err
 	}
@@ -152,7 +152,7 @@ func (a *Ames) initZod() error {
 		for {
 			select {
 			case <-ticker.C:
-				_, err = a.SendPacket(pkt)
+				_, err = a.SendPacket(pkt[0])
 				count++
 			}
 		}
@@ -240,31 +240,38 @@ func (a *Ames) GenerateSymKey(encryptionKey string) []byte {
 }
 
 // Request sends a mark and data (noun) to a connected ship
-func (c *Connection) Request(path []string, mark string, data noun.Noun) ([]byte, error) {
+func (c *Connection) Request(path []string, mark string, data noun.Noun) ([][]byte, error) {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
-	pkt, err := c.CreatePacket(path, mark, data)
+	pkts, err := c.CreatePacket(path, mark, data)
 	c.num++
 	if err != nil {
 		return nil, err
 	}
-	_, err = c.ames.SendPacket(pkt)
-	return pkt, err
+	for _, pkt := range pkts {
+		_, err = c.ames.SendPacket(pkt)
+	}
+	return pkts, err
 }
 
-func (c *Connection) CreatePacket(path []string, mark string, data noun.Noun) ([]byte, error) {
+func (c *Connection) CreatePacket(path []string, mark string, data noun.Noun) ([][]byte, error) {
 	poke := ConstructPoke(path, mark, data)
-	msg := SplitMessage(c.num, poke)
-	// TODO: create each packet vs msg[0]
-	pat := FragmentToShutPacket(msg[0], c.bone)
-	pack, err := EncodeShutPacket(pat, c.Peer.symKey, c.ames.Ship, c.Peer.ship, c.ames.Life, c.Peer.life)
-	if err != nil {
-		return []byte{}, err
-	}
-	packet := EncodePacket(pack)
+	msgs := SplitMessage(c.num, poke)
+	var packets [][]byte
+	for _, msg := range msgs {
 
-	return packet, nil
+		pat := FragmentToShutPacket(msg, c.bone)
+		pack, err := EncodeShutPacket(pat, c.Peer.symKey, c.ames.Ship, c.Peer.ship, c.ames.Life, c.Peer.life)
+		if err != nil {
+			return [][]byte{}, err
+		}
+		packet := EncodePacket(pack)
+		packets = append(packets, packet)
+	}
+	// TODO: create each packet vs msg[0]
+
+	return packets, nil
 }
 
 func (a *Ames) handleConn() {

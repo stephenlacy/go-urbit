@@ -130,14 +130,9 @@ sudo make install
 ```
 export MOON_SEED="your seed"
 
-go test ./..
+go test ./...
 ```
 
-
-
-
-TODO:
-- split each packet in `CreatePacket`
 
 
 
