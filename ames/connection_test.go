@@ -3,7 +3,6 @@ package ames
 import (
 	"fmt"
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/stevelacy/go-urbit/noun"
@@ -38,18 +37,18 @@ func TestConnectionMoon(t *testing.T) {
 		t.Error(err)
 	}
 
-	c2, err := ames.Connect(to)
+	/* c2, err := ames.Connect(to)
 	if err != nil {
 		t.Error(err)
 	}
 
 	// make a string larger than 1kb
-	m := make([]string, 8000)
+	m := make([]string, 100000)
 	for k := range m {
 		m[k] = "A"
 	}
 
-	_, err = c2.Request([]string{"ge", "hood"}, "helm-hi", noun.MakeNoun(strings.Join(m, "")))
+	_, err = c2.Request([]string{"ge", "hood"}, "helm-hi", noun.MakeNoun(strings.Join(m, ""))) */
 }
 
 func ExampleNewAmes() {

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"math/big"
 	"net"
 	"sync"
@@ -35,6 +36,7 @@ type Connection struct {
 	mut       sync.Mutex
 	bone, num int
 	Peer      *Peer
+	FragPool  map[int]map[int]Packet // pending frags num > fun > Packet
 }
 
 type Peer struct {
@@ -50,7 +52,9 @@ type Packet struct {
 	Path []string
 	Mark string
 	Data noun.Noun
+	raw  []byte
 	Num  int
+	Fun  int // Frag num
 }
 
 func NewAmes(seed string, onPacket OnPacket) (*Ames, error) {
@@ -84,6 +88,7 @@ func NewAmes(seed string, onPacket OnPacket) (*Ames, error) {
 
 	// handle all incoming packets
 	go ames.handleConn()
+	go ames.handleRetries()
 
 	// breach parent
 	parent := noun.B(0).Mod(ames.Ship, noun.Bex(noun.B(32)))
@@ -103,7 +108,7 @@ func NewAmes(seed string, onPacket OnPacket) (*Ames, error) {
 	// this prevents bone and message num conflicts
 	if c.ames.breach == true {
 		// breach with helm-moon-breach
-		_, err := c.Request(
+		pkt, err := c.CreateMessage(
 			[]string{"ge", "hood"},
 			"helm-moon-breach",
 			noun.MakeNoun(c.ames.Ship),
@@ -111,9 +116,14 @@ func NewAmes(seed string, onPacket OnPacket) (*Ames, error) {
 		if err != nil {
 			return ames, err
 		}
+		_, err = c.ames.SendPacket(pkt[0])
+
+		if err != nil {
+			return ames, err
+		}
 	}
 	// delay for zod to catch up
-	time.Sleep(2 * time.Second)
+	time.Sleep(5 * time.Second)
 
 	// ping zod after breach
 	err = ames.initZod()
@@ -131,7 +141,7 @@ func NewAmes(seed string, onPacket OnPacket) (*Ames, error) {
 func (a *Ames) initZod() error {
 	c, err := a.Connect(ZOD)
 
-	pkt, err := c.CreatePacket(
+	pkt, err := c.CreateMessage(
 		[]string{"ge", "hood"},
 		"helm-hi",
 		noun.MakeNoun("urbit-go"),
@@ -221,10 +231,11 @@ func (a *Ames) GetConnection(p *big.Int, bone int) (*Connection, error) {
 		return cn, nil
 	}
 	c := &Connection{
-		Peer: peer,
-		bone: bone,
-		ames: a,
-		num:  1,
+		Peer:     peer,
+		bone:     bone,
+		ames:     a,
+		FragPool: make(map[int]map[int]Packet),
+		num:      1,
 	}
 	peer.Connections[bone] = c
 	peer.nextBone += 4
@@ -244,18 +255,32 @@ func (c *Connection) Request(path []string, mark string, data noun.Noun) ([][]by
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
-	pkts, err := c.CreatePacket(path, mark, data)
-	c.num++
+	pkts, err := c.CreateMessage(path, mark, data)
 	if err != nil {
 		return nil, err
 	}
-	for _, pkt := range pkts {
+	for k, pkt := range pkts {
+		// add to pending pool
+		if len(c.FragPool[c.num]) == 0 {
+			c.FragPool[c.num] = make(map[int]Packet)
+		}
+
+		c.FragPool[c.num][k] = Packet{
+			Path: path,
+			Mark: mark,
+			Data: data,
+			raw:  pkt,
+			Num:  c.num,
+			Fun:  k,
+		}
 		_, err = c.ames.SendPacket(pkt)
 	}
+	// increment num after sending frags
+	c.num++
 	return pkts, err
 }
 
-func (c *Connection) CreatePacket(path []string, mark string, data noun.Noun) ([][]byte, error) {
+func (c *Connection) CreateMessage(path []string, mark string, data noun.Noun) ([][]byte, error) {
 	poke := ConstructPoke(path, mark, data)
 	msgs := SplitMessage(c.num, poke)
 	var packets [][]byte
@@ -269,9 +294,26 @@ func (c *Connection) CreatePacket(path []string, mark string, data noun.Noun) ([
 		packet := EncodePacket(pack)
 		packets = append(packets, packet)
 	}
-	// TODO: create each packet vs msg[0]
 
 	return packets, nil
+}
+
+// handleRetries will retry all packets in each FragPool
+func (a *Ames) handleRetries() {
+	for range time.Tick(time.Second * 10) {
+		for _, p := range a.Peers {
+			for _, c := range p.Connections {
+				for _, pool := range c.FragPool {
+					for _, packet := range pool {
+						_, err := c.ames.SendPacket(packet.raw)
+						if err != nil {
+							log.Fatal(err)
+						}
+					}
+				}
+			}
+		}
+	}
 }
 
 func (a *Ames) handleConn() {
@@ -298,6 +340,30 @@ func (a *Ames) handleConn() {
 			fmt.Println(err)
 			return
 		}
+
+		// if this is an ack remove the packet from pending frags
+		if packet.Mark == "ack" {
+			for _, p := range a.Peers {
+				for _, c := range p.Connections {
+					for num, pool := range c.FragPool {
+						if num == packet.Num {
+							if packet.Fun == -1 {
+								// final packet, delete whole num
+								delete(c.FragPool, num)
+								continue
+							}
+
+							for fun, packet := range pool {
+								if fun == packet.Fun {
+									delete(pool, fun)
+								}
+							}
+						}
+					}
+				}
+			}
+
+		}
 		// if res is from zod
 		if c.Peer.ship.Cmp(noun.B(0)) == 0 && !a.connected {
 			// we are now connected
@@ -305,13 +371,13 @@ func (a *Ames) handleConn() {
 		}
 
 		// messages
-		if a.OnPacket != nil {
+		if a.OnPacket != nil && packet.Mark != "ack" {
 			a.OnPacket(c, packet)
 		}
 	}
 }
 
-// ParsePacket is the reverse of CreatePacket
+// ParsePacket is the reverse of CreateMessage
 func (a *Ames) ParsePacket(pkt []byte) (Packet, *Connection, error) {
 	from, to, fromTick, toTick, content, err := DecodePacket(pkt)
 	if err != nil {
@@ -328,14 +394,14 @@ func (a *Ames) ParsePacket(pkt []byte) (Packet, *Connection, error) {
 	if err != nil {
 		return Packet{}, &Connection{}, err
 	}
-	msg1, bone, num, isFrag, err := ShutPacketToFragment(pat)
+	bone, num, isFrag, meat, err := ShutPacketToMeat(pat)
 	if err != nil {
 		return Packet{}, &Connection{}, err
 	}
 
 	conn, err := a.GetConnection(from, bone)
 	if isFrag {
-		_, msg, err := JoinMessage([]noun.Noun{msg1})
+		msg, err := JoinMessage([]noun.Noun{meat})
 		if err != nil {
 			return Packet{}, &Connection{}, err
 		}
@@ -349,11 +415,29 @@ func (a *Ames) ParsePacket(pkt []byte) (Packet, *Connection, error) {
 
 		return packet, conn, err
 	}
+
+	// ack packet
+	a1, err := noun.AssertAtom(noun.Head(meat))
+	if err != nil {
+		return Packet{}, &Connection{}, err
+	}
+
+	// check if this is the final frag in msg
+	isFinal := noun.B(0).Cmp(a1.Value) != 0
+	var fun int
+	if !isFinal {
+		f1, _ := noun.AssertAtom(noun.Tail(meat))
+		fun = int(f1.Value.Int64())
+	} else {
+		fun = -1
+	}
+
 	ack := Packet{
 		Path: []string{""},
 		Mark: "ack",
 		Data: noun.MakeNoun(0),
 		Num:  num,
+		Fun:  fun,
 	}
 	return ack, conn, nil
 }

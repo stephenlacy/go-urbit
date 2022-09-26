@@ -85,17 +85,14 @@ func TestDestructPath(t *testing.T) {
 	}
 }
 
-func TestJoinMessage(t *testing.T) {
+/* func TestJoinMessage(t *testing.T) {
 	num := 11
 	poke := ConstructPoke([]string{"path"}, "mark", noun.MakeNoun(noun.B(0).Exp(noun.B(2), noun.B(7000), nil)))
 	a := SplitMessage(num, poke)
 
-	n, poke2, err := JoinMessage(a)
-	if n != num {
-		t.Errorf("expected %d got %d", n, num)
-	}
-	fmt.Println(poke2, err)
-}
+	n, err := JoinMessage(a)
+	fmt.Println(n, err)
+} */
 
 func TestShutPacketToFragment(t *testing.T) {
 	num := 11
@@ -103,7 +100,7 @@ func TestShutPacketToFragment(t *testing.T) {
 	poke := ConstructPoke([]string{"path"}, "mark", noun.MakeNoun("data"))
 	msg := SplitMessage(num, poke)
 	pat := FragmentToShutPacket(msg[0], bone)
-	res, b, n, _, err := ShutPacketToFragment(pat)
+	b, n, isFrag, res, err := ShutPacketToMeat(pat)
 	if err != nil {
 		t.Error(err)
 	}
@@ -111,9 +108,12 @@ func TestShutPacketToFragment(t *testing.T) {
 		t.Errorf("expected %v got %v", bone, b)
 	}
 	if n != num {
-		t.Errorf("expected %v got %v", num, n)
+		t.Errorf("expected %v got %v", n, num)
 	}
-	e1 := "[11 1 0 1139440589747613851334439309220300165109479259885505]"
+	if !isFrag {
+		t.Errorf("expected %v got %v", true, isFrag)
+	}
+	e1 := "[1 0 1139440589747613851334439309220300165109479259885505]"
 	if res.String() != e1 {
 		t.Errorf("expected %v got %v", e1, res.String())
 	}

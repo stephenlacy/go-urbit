@@ -15,6 +15,8 @@ import (
 	"github.com/stevelacy/go-urbit/urcrypt"
 )
 
+const fragTag = 0 // 0 is frag, 1 is ack
+
 var zodAddr = "zod.urbit.org:13337"
 var ethAddr = "0x223c067f8cf28ae173ee5cafea60ca44c335fecb"
 var apiAddr = "http://eth-mainnet.urbit.org:8545"
@@ -115,30 +117,25 @@ func SplitMessage(num int, blob noun.Noun) []noun.Noun {
 }
 
 // JoinMessage is the reverse of SplitMessage
-func JoinMessage(n []noun.Noun) (int, noun.Noun, error) {
-	a, err := AssertAtom(Head(n[0]))
-	if err != nil {
-		return 0, MakeNoun(0), err
-	}
-	num := int(a.Value.Int64())
+func JoinMessage(n []noun.Noun) (noun.Noun, error) {
 	msg := B(0)
 
 	for k, v := range n {
 		// check if the message num is in correct order
-		n1, err := AssertAtom(Head(Tail(Tail(v))))
+		n1, err := AssertAtom(Head(Tail(v)))
 		if err != nil {
-			return 0, MakeNoun(0), err
+			return MakeNoun(0), err
 		}
 		nIndex := int(n1.Value.Int64())
 
 		if k != nIndex {
-			return 0, MakeNoun(0), errors.New("out of order error")
+			return MakeNoun(0), errors.New("out of order error")
 		}
 
-		frag, err := AssertAtom(Tail(Tail(Tail(v))))
+		frag, err := AssertAtom(Tail(Tail(v)))
 
 		if err != nil {
-			return 0, MakeNoun(0), err
+			return MakeNoun(0), err
 		}
 
 		msg = CatLen(msg, frag.Value, uint(k<<13))
@@ -146,34 +143,38 @@ func JoinMessage(n []noun.Noun) (int, noun.Noun, error) {
 
 	full := Cue(msg)
 
-	return num, full, nil
+	return full, nil
 }
 
 func FragmentToShutPacket(frag noun.Noun, bone int) noun.Noun {
-	return noun.MakeNoun([]interface{}{bone, noun.Head(frag), 0, noun.Tail(frag)})
+	return noun.MakeNoun([]interface{}{bone, noun.Head(frag), fragTag, noun.Tail(frag)})
 }
 
-func ShutPacketToFragment(n Noun) (Noun, int, int, bool, error) {
+// ShutPacketToMeat takes a raw encrypted packet
+// returns the encrypted packet content, bone, packet num, and packet type
+func ShutPacketToMeat(n Noun) (int, int, bool, Noun, error) {
+	// parse bone
 	bn1, err := AssertAtom(Head(n))
 	if err != nil {
-		return noun.MakeNoun(0), 0, 0, false, nil
+		return 0, 0, false, noun.MakeNoun(0), nil
 	}
 	bn2 := BigToLittle(bn1.Value)
 	bone := int(B(0).SetBytes(bn2).Int64())
 
+	// parse num
 	nm1, err := AssertAtom(Head(Tail(n)))
 	if err != nil {
-		return noun.MakeNoun(0), 0, 0, false, nil
+		return 0, 0, false, noun.MakeNoun(0), nil
 	}
 	nm2 := BigToLittle(nm1.Value)
 	num := int(B(0).SetBytes(nm2).Int64())
 	// check type of packet
 	ty, err := AssertAtom((Head(Tail(Tail(n)))))
 	// 0 is a fragment
-	isFrag := ty.Value.Cmp(B(0)) == 0
-	frag := MakeNoun([]interface{}{Head(Tail(n)), Tail(Tail(Tail(n)))})
+	isFrag := ty.Value.Cmp(B(0)) == fragTag
+	meat := Tail(Tail(Tail(n)))
 
-	return frag, int(bone), int(num), isFrag, nil
+	return int(bone), int(num), isFrag, meat, nil
 }
 
 func EncodeShutPacket(pkt noun.Noun, symKey []byte, from *big.Int, to *big.Int, fromLife, toLife int64) (noun.Noun, error) {
