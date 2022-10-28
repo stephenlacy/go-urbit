@@ -19,12 +19,14 @@ func UrcryptEdShar(public, seed [32]byte) []byte {
 	public1 := (*C.uint8_t)(C.CBytes(public[:]))
 	seed1 := (*C.uint8_t)(C.CBytes(seed[:]))
 
+	defer C.free(unsafe.Pointer(out))
+	defer C.free(unsafe.Pointer(public1))
+	defer C.free(unsafe.Pointer(seed1))
+
 	C.urcrypt_ed_shar(public1, seed1, (*C.uint8_t)(out))
 
 	out1 := C.GoBytes(out, 32)
-	C.free(unsafe.Pointer(out))
-	C.free(unsafe.Pointer(public1))
-	C.free(unsafe.Pointer(seed1))
+
 	return out1
 }
 
@@ -48,21 +50,18 @@ func UrcryptAESSivcEn(message *big.Int, AESSivData [][]byte, key [64]byte) (erro
 	out := C.malloc(msgLenU)
 	key1 := (*C.uint8_t)(C.CBytes(key[:]))
 
+	defer C.free(unsafe.Pointer(message1))
+	defer C.free(unsafe.Pointer(out))
+	defer C.free(unsafe.Pointer(key1))
+	defer C.free(unsafe.Pointer(iv))
+
 	cerr := C.urcrypt_aes_sivc_en(message1, msgLenU, (*C.urcrypt_aes_siv_data)(&accum[0]), accumLenU, key1, (*C.uint8_t)(iv), (*C.uint8_t)(out))
 	if cerr != 0 {
-		C.free(unsafe.Pointer(message1))
-		C.free(unsafe.Pointer(out))
-		C.free(unsafe.Pointer(key1))
-		C.free(unsafe.Pointer(iv))
 		return fmt.Errorf("urcrypt_aes_sivc_en: Failed to encrypt received error code: %d\n", cerr), [16]byte{}, big.NewInt(0)
 	}
 
 	out1 := C.GoBytes(out, (C.int)(msgLen))
 	iv1 := C.GoBytes(iv, 16)
-	C.free(unsafe.Pointer(message1))
-	C.free(unsafe.Pointer(out))
-	C.free(unsafe.Pointer(key1))
-	C.free(unsafe.Pointer(iv))
 
 	var iv2 [16]byte
 	copy(iv2[:], iv1)
@@ -79,32 +78,29 @@ func UrcryptAESSivcDe(message *big.Int, AESSivData [][]byte, key [64]byte, iv [1
 	msgLenU := (C.ulong)(msgLen)
 	iv1 := (*C.uint8_t)(C.CBytes(iv[:]))
 
-	accum := []C.urcrypt_aes_siv_data{}
+	data := []C.urcrypt_aes_siv_data{}
 	for _, v := range AESSivData {
 		item := C.urcrypt_aes_siv_data{
 			length: (C.ulong)(len(v)),
 			bytes:  (*C.uint8_t)(C.CBytes(v)),
 		}
-		accum = append(accum, item)
+		data = append(data, item)
 	}
-	accumLenU := (C.ulong)(len(accum))
+	accumLenU := (C.ulong)(len(data))
 
 	out := C.malloc(msgLenU)
 	key1 := (*C.uint8_t)(C.CBytes(key[:]))
 
-	cerr := C.urcrypt_aes_sivc_de(message1, msgLenU, (*C.urcrypt_aes_siv_data)(&accum[0]), accumLenU, key1, (*C.uint8_t)(iv1), (*C.uint8_t)(out))
+	defer C.free(unsafe.Pointer(message1))
+	defer C.free(unsafe.Pointer(out))
+	defer C.free(unsafe.Pointer(key1))
+	defer C.free(unsafe.Pointer(iv1))
+
+	cerr := C.urcrypt_aes_sivc_de(message1, msgLenU, (*C.urcrypt_aes_siv_data)(&data[0]), accumLenU, key1, (*C.uint8_t)(iv1), (*C.uint8_t)(out))
 	if cerr != 0 {
-		C.free(unsafe.Pointer(message1))
-		C.free(unsafe.Pointer(out))
-		C.free(unsafe.Pointer(key1))
-		C.free(unsafe.Pointer(iv1))
 		return big.NewInt(0), fmt.Errorf("urcrypt_aes_sivc_de: Failed to decrypt received error code: %d\n", cerr)
 	}
 	out1 := C.GoBytes(out, (C.int)(msgLen))
-	C.free(unsafe.Pointer(message1))
-	C.free(unsafe.Pointer(out))
-	C.free(unsafe.Pointer(key1))
-	C.free(unsafe.Pointer(iv1))
 
 	b2 := big.NewInt(0)
 	b2.SetBytes(out1)
