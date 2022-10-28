@@ -1,0 +1,3 @@
+[submodule "argon2u/argon2"]
+	path = argon2u/argon2
+	url = git@github.com:urbit/argon2.git
