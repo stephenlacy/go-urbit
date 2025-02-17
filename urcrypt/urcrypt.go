@@ -39,9 +39,11 @@ func UrcryptAESSivcEn(message *big.Int, AESSivData [][]byte, key [64]byte) (erro
 
 	accum := []C.urcrypt_aes_siv_data{}
 	for _, v := range AESSivData {
+		vv := C.Cbytes(v)
+		defer C.free(unsafe.Pointer(vv))
 		item := C.urcrypt_aes_siv_data{
 			length: (C.ulong)(len(v)),
-			bytes:  (*C.uint8_t)(C.CBytes(v)),
+			bytes:  (*C.uint8_t)(vv),
 		}
 		accum = append(accum, item)
 	}
